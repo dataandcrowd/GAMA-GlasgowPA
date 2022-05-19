@@ -1,0 +1,11 @@
+* England
+Output Area (OA): mininum people of 50; minimum household 40
+Lower Super Output Area (LSOA)
+Middle Super Output Area (MSOA)
+
+* Scotland
+Output Area (OA): mininum people of 50; minimum household 20
+Data Zones: 746 for Glasgow; 6976 covering the whole of Scotland
+Intermediate Zones: 136 for Glasgow; 1,279 covering the whole of Scotland.
+
+https://www.nrscotland.gov.uk/files/geography/2011-census/geography-bckground-info-comparison-of-thresholds.pdf

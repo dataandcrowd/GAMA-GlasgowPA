@@ -1,0 +1,42 @@
+---
+title: "Geographic Exploration of Glasgow City"
+date: '2022-05-19'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
+    number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Geographic Boundary
+## Description
+* Scotland has its own names and theresholds for the Census boundaries.
+* It is different from England and Wales.
+* Output Areas (OAs) in Scotland are based on both population and household but Data Zone (DZ) and Intermediate Zone (IZ) are based on poulation only.
+* In England, OAs, LSOAs, and MSOAs are all based on both population and household.
+* For more information, please visit: https://scotborders.gov.uk/info/20015/your_council/65/research_and_data/5
+
+## What does Glasgow look like?
+* Output Areas: 5486 for Glasgow (11.8%); 46,351 for the whole of Scotland
+* Data Zones: 746 for Glasgow (10.6%); 6976 covering the whole of Scotland
+* Intermediate Zones: 136 for Glasgow (10.6%); 1,279 covering the whole of Scotland.
+
+| Country  | Boundary Name            | Pop-Min | Pop-Max | Household-Min | Household-Max | Total No.Scot 11' | Total No. Glasgow 11' |
+|----------|-------------------|---------|---------|-----------|------------|-------------------|--------------|
+| Scotland | Output Area              | 50      | -      | 20            | -            |  46351                   | 5486         |
+|          | Datazone                 | 500     | 1000    | -            | -            |  6976                    | 746          |
+|          | Intermediate Zone        | 2500    | 6000    | -            | -            |  1279                    | 136          |
+| England  | Output Area              | 100     | -      | 40            | -            |  181408                  | -           |
+|          | Lower Super Output Area  | 1000    | 3000    | 400           | 1200        | 34753                   | -           |
+|          | Middle Super Output Area | 5000    | 15000   | 2000          | 6000        | 7201                    | -           |
+
+
+# Schools
+
+

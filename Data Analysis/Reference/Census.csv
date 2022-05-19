@@ -1,0 +1,8 @@
+﻿Country,Boundary Name,Population,,Household,,Count of Geography,,Glasgow
+,,Min,Max,Min,Max,2001,2011,2011
+Scotland,Output Area,50,NA,20,NA,42604,46351,5486
+Scotland,Datazone,500,1000,NA,NA,6505,6976,746
+Scotland,Intermediate Zone,2500,6000,NA,NA,1235,1279,136
+England,Output Area,100,NA,40,NA,175434,181408,NA
+England,Lower Super Output Area,1000,3000,400,1200,34378,34753,NA
+England,Middle Super Output Area,5000,15000,2000,6000,7194,7201,NA
