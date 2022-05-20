@@ -1,19 +1,17 @@
 /***
 * Name: Children-activity v2
-* Author: ja234z
+* Author: Jonatan Almagor
 * Description: 
 * Tags: Tag1, Tag2, TagN
-* few fixes:1)fix duration after school for children with fsa
-*           2)simd becomes the impact on prob for outdoor play
-*           3) simd also impact outdoor play after school
+
 ***/
 
 
-model Children_activity2
+model Children_activity
 
 global {
 	
-	string scale<-"120zones" among:["Glasgow", "53zones","120zones"];
+	string scale<-"120zones" among:["53zones","120zones"];
 	file private_garden_file <-file('../includes/Layers_glasgow/'+scale+'/Private_Garden_'+scale+'.shp') ;
 	file road_shape_file <- file('../includes/Layers_glasgow/'+scale+'/Road_'+scale+'.shp') ;
 	file landuse_shape_file<-file('../includes/Layers_glasgow/'+scale+'/Landuse_'+scale+'.shp');
@@ -38,10 +36,10 @@ global {
 	int save_on_day<-100;
 	string save_file<-'scenario';
 	float max_visits<-0.0;
-    float min_visits<-0.0;
+        float min_visits<-0.0;
 	float max_less_min<-1.0;
 	//MVPA probabilities
-	float mvpa_walk<-float(data[5,23]);///###23   rnd (0.8, 1.2, 0.05)
+	float mvpa_walk<-float(data[5,23]);///###23   
 	float mvpa_pe_b<-float(data[6,19]);////19
 	float mvpa_pe_g<-float(data[5,19]);////19
 	float mvpa_arrival_b<-float(data[6,9]);//9
@@ -105,7 +103,7 @@ global {
 	 *    - FloydWarshall: ensure to find the best shortest path - compute all the shortest paths at the same time (and keep them in memory): https://en.wikipedia.org/wiki/Floyd-Warshall_algorithm
 	 */
 	init { 
-		//seed<-10.0;
+		//seed<-10.0; enable if you want to keep the same seed for every simulation
 		date started<-date("now"); write "Start initialise:"+started;
 		date tmp_date<- date("now");
 		do create_layers; write "create layers: "+ (date("now")-tmp_date);tmp_date<- date("now");
@@ -618,29 +616,7 @@ reflex save_simulation when:days=save_on_day and current_hour=8.0{
 		}			
 	} 
 
-action do_regression{
- 	regression factors;
- 	matrix<float> tmp_matrix<-0.0 as_matrix{8,length(children)};
- 	int row<-0;
- 	ask children{
- 		tmp_matrix[0,row]<-avg_mvpa;
- 		tmp_matrix[1,row]<-num_sport;
- 		tmp_matrix[2,row]<-dis_school;
- 		tmp_matrix[3,row]<-avg_walk;
- 		tmp_matrix[4,row]<-my_fit;
- 		tmp_matrix[5,row]<-outplay;
- 		tmp_matrix[6,row]<-gender="boy"?0:1;
- 		tmp_matrix[7,row]<-socio;
- 		row<-row+1;		
- 	}
- 	write tmp_matrix;
- 	factors<-build (tmp_matrix);
- 	write factors;
- 	write predict(factors,[1,500,30,0.8,1.0,1,1]);
-	}
-
 }
-
 
 species private_garden{
 	int poly_id;
@@ -791,9 +767,7 @@ species food_drink{
 	}	
 }	
 
-//grid cell cell_width:100 cell_height:100 neighbors: 8  {		
-//}	
-
+	
 species landuse_polygon{
 	int poly_id;
 	rgb color;
@@ -838,11 +812,11 @@ species children skills: [moving] {
 	zone my_zone;
 	string gender<-flip(0.5)? "boy":"girl";
 	int socio; //4 social levels 1-richest 4-poorest based on AB, C1,C2,DE
-	float my_fit<-max(0.3,gauss ({1, 0.3})) ; //distribution of fittness  //rnd(0.7,1.3) 
-	float outplay<-truncated_gauss ({1, 0.5});
+	float my_fit<-max(0.3,gauss ({1, 0.3})) ; //distribution of tendency to be active (A)
+	float outplay<-max(0,gauss ({1, 0.3})); //distribution of preference to be outdoor (O)
 	//float fit_dif;
-    float my_crime;
-    int my_simd;
+        float my_crime;
+        int my_simd;
 	float my_simd_imp;
 	int num_friends;
 	int num_car;
@@ -979,10 +953,10 @@ species children skills: [moving] {
 	
 	reflex move_to_target when:target!=nil{
 		
-		do goto on:the_graph target:target speed:my_speed; //the_graph//1= speed of 1 meter/sec = 3.6 km/h (I currently use average speed of 1.2 after testing the simulation)
+		do goto on:the_graph target:target speed:my_speed; 
 		
 		if  trans_mode=1 {
-			if flip(mvpa_walk){ //flip(0.4*my_fit)
+			if flip(mvpa_walk){ 
 				tot_mvpa<- tot_mvpa+1; //updating MVPA when walking
 				list_lu_mvpa[23]<-list_lu_mvpa[23]+1; 	
 			} 
@@ -1050,7 +1024,7 @@ species children skills: [moving] {
 	reflex school_time when:purpuse='stay_school'{
 		//end of school
 	 	if current_hour>=15.0{
-	 			float prob<-trans_mode=2? my_simd_imp*outplay*a_s/3:my_simd_imp*outplay*a_s; //incase the child is returning by car the likelyhood to stop decrease
+	 			float prob<-trans_mode=2? my_simd_imp*outplay*a_s/3:my_simd_imp*outplay*a_s; //incase the child is returning by car the likelyhood to participate decreases
 	 			if have_formal and trans_mode=1{prob<-today_sport.hour-15.0>1?my_simd_imp*outplay*a_s:my_simd_imp*outplay*a_s/3; } //in case the FSA start is in one hour the likelyhood to stop decrease
 	 			if flip(prob)    {
 	 				do transport_mode(true);
@@ -1073,7 +1047,7 @@ species children skills: [moving] {
 		lu_list[my_lu_code]<-lu_list[my_lu_code]+1;
 		duration<-duration-1;
 		if flip(my_mvpa){
-			tot_mvpa<-tot_mvpa+1;	//probability for mvpa varies according to the child fittness
+			tot_mvpa<-tot_mvpa+1;	
 			list_lu_mvpa[my_lu_code]<-list_lu_mvpa[my_lu_code]+1;
 		}
 		if duration<=0 {
@@ -1250,8 +1224,8 @@ species children skills: [moving] {
 				int nm_play<-length(children where(each.my_activity="Neigh play" and each distance_to self<=300));
 				float k<-nm_play>2?min(1.0,imp_kids*nm_play):0;
 				//write ""+nm_play+": prob " + k ;
-				float fq<-min(1,my_neigh_prob*(1+k)); // agent's prob to play in neigh* other children playing and neigh 
-				return 1-(1-fq)^(1/12);	//probability per 
+				float fq<-min(1,my_neigh_prob*(1+k)); // agent's prob to play in neigh effected by other children playing in the neigh 
+				return 1-(1-fq)^(1/12);	//probability per selection
 				
 			}
 			if act=3{//garden
@@ -1312,10 +1286,10 @@ species children skills: [moving] {
 					dis_child<-myself.neigh_map[self];
 					//dis_child<-dis_child<=300?300:dis_child;
 					child_count<-length(children inside(self));	//number of others playing outside
-					float c<-child_count>0? exp(-1/(child_count*0.7)):0;   //1-0.75^child_count;
-					float d<-exp(-dis_child/700);     //0.5^(dis_child/500);
-					float area_inc<-area>10000?1:0.0;//(area>2500?0.8:0.5); 
-					rank<-0.6*d+0.2*c+0.2*area_inc;	//
+					float c<-child_count>0? exp(-1/(child_count*0.7)):0;   
+					float d<-exp(-dis_child/700);     
+					float area_inc<-area>10000?1:0.0;
+					rank<-0.6*d+0.2*c+0.2*area_inc;	
 				}
 			neigh_poly<- (reverse(neigh_poly sort_by(each.rank))); 
 			int size_list<-length(neigh_poly);
@@ -1401,21 +1375,21 @@ experiment children_activity type: gui until:days=60 {
 	parameter "Write stats" var:write_stat;
 	parameter "Show zones" var:show_zones;
 	parameter "Assign formal sport" var:include_fsa;
-	parameter "Prob meet friend" var:f_m category:'Activities';       //prob to meet a friend (0.1)
-	parameter "Prob after school" var: a_s category:'Activities'; //prob for after school activity on the route home (0.3)
-	parameter "Prob play neigh" var:n_p category:'Activities'; //prob playing at the neighborhood 0.3
-	parameter "Prob friends play out" var:f_o category:'Activities'; //prob of friends to goout
+	parameter "Prob meet friends" var:f_m category:'Activities';       //prob to meet a friend (0.1)
+	parameter "Prob play outdoor after school" var: a_s category:'Activities'; //prob for after school activity on the route home (0.3)
+	parameter "Prob play outdoor neigh" var:n_p category:'Activities'; //prob playing at the neighborhood 0.3
+	parameter "Prob meeting outdoor" var:f_o category:'Activities'; //prob of friends to goout
 	parameter "Shoping" var: s_a category:'Activities';//prob shopping 0.1
 	parameter "Play in garden" var:g_a category:'Activities';//prob garden 0.2
-	parameter "Kids impact" var:imp_kids category:'Impacts';//impact of others palying in area
-	parameter "Friends impact my_fit" var:imp_f category:'Impacts';
-	parameter "School intervention" var:SC_inter category:'Interventions';//duration of extra PA activity in school
+	parameter "Impact- presence of others outdoor" var:imp_kids category:'Impacts';//impact of others palying in area
+	parameter "Adaptation- agents' tendency to peers" var:imp_f category:'Impacts';
+	parameter "School intervention, PE min/day" var:SC_inter category:'Interventions';//duration of extra PA activity in school
 	parameter "Travel mode" var:travel_mode category:'Travel';//usual, walk_school,walk_all
 	
 	output {		
 		display MVPA refresh:current_hour=8.00 {
-			chart "Daily MVPA by SES" background: rgb("lightgrey") type: histogram  
-			tick_font_size:14 y_label:"MVPA, min" position:{0.1,0.53} size:{0.5,0.4}  y_range:[0,80]{
+			chart "Daily MVPA by SEP" background: rgb("lightgrey") type: histogram  
+			tick_font_size:14 y_label:"MVPA, min" position:{0.3,0.53} size:{0.5,0.4}  y_range:[0,80]{
 			    data "DE" value:  children where (each.socio=1) mean_of (each.avg_mvpa) color: #green;
 			    data "C2" value:  children where (each.socio=2) mean_of (each.avg_mvpa) color: #blue;
 			    data "C1" value:  children where (each.socio=3) mean_of (each.avg_mvpa) color: #brown;
@@ -1424,9 +1398,9 @@ experiment children_activity type: gui until:days=60 {
 			}	
 		
 			
-			chart "MVPA minutes" type: histogram  background: rgb("lightGray") position:{0.1,0.0} size:{0.8,0.5} tick_font_size:12 y_label:"Count"{
-				datalist (distribution_of(children collect each.avg_mvpa,28,0,140) at "legend") 
-            	value:(distribution_of(children collect each.avg_mvpa,28,0,140) at "values") ;   
+			chart "MVPA min/day" type: histogram  background: rgb("lightGray") position:{0.1,0.0} size:{0.8,0.5} tick_font_size:12 y_label:"Count"{
+				datalist (distribution_of(children collect each.avg_mvpa,14,0,140) at "legend") 
+            	value:(distribution_of(children collect each.avg_mvpa,14,0,140) at "values") ;   
 									
 		 }	
 		}
@@ -1465,8 +1439,8 @@ experiment children_activity type: gui until:days=60 {
 			}
 			 	
 	}
-	display fract_mvpa60 refresh:current_hour=9.00{
-		chart "frac days mvpa 60" type: histogram  background: rgb("lightGray") position:{0,0} size:{0.5,0.5} tick_font_size:12{
+	display Fract_60 refresh:current_hour=9.00{
+		chart "Fraction of days with mvpa>=60" type: histogram  background: rgb("lightGray") position:{0,0} size:{0.5,0.5} tick_font_size:12{
 				datalist (distribution_of(children collect each.per_days_sixt,10,0,1) at "legend") 
             	value:(distribution_of(children collect each.per_days_sixt,10,0,1) at "values") ;   
 									
@@ -1474,20 +1448,20 @@ experiment children_activity type: gui until:days=60 {
 	}
 	
 	display Stat refresh:false{	
-	chart "Socio-economic" type: pie  background: rgb("lightGray") position:{0.5,0} size:{0.5,0.5} label_font_size:30{
+	chart "Socio-economic position" type: pie  background: rgb("lightGray") position:{0.5,0} size:{0.48,0.48} label_font_size:30{
 				
 				data "[DE]"  value: length(children where( (each.socio)=1)) color:#lightgreen;
 				data "[C2]"  value: length(children where( (each.socio)=2)) color:#darkgreen;
 				data "[C1]"  value: length(children where( (each.socio)=3)) color:#blue;
 				data "[AB]"  value: length(children where( (each.socio)=4)) color:#purple;
 		}
-	chart "Formal sport activties" type: pie  background: rgb("lightGray") position:{0.0,0.5} size:{0.5,0.5}  legend_font_size:18{
+	chart "Formal sport activties" type: pie  background: rgb("lightGray") position:{0.1,0.0} size:{0.48,0.48}  legend_font_size:18{
 				data "None"  value: length(children where(each.num_sport=0)) color:#green;
 				data "[1-2]"  value:  length(children where(each.num_sport>0 and each.num_sport<=2))color:#blue;
 				data "[3-4]"  value: length(children where(each.num_sport>2 and each.num_sport<=4)) color:#orange;
 				data "[5]"  value: length(children where(each.num_sport>4)) color:#red;
 		}
-	chart "Percent with >=1 car " type: histogram  background: rgb("lightGray") position:{0.5,0.5} size:{0.5,0.5} tick_font_size:18{
+	chart "Percent with >=1 car " type: histogram  background: rgb("lightGray") position:{0.5,0.5} size:{0.48,0.48} tick_font_size:18{
 				data "[DE]"  value: length(children where(each.socio=1 and each.num_car>0))/length(children where(each.socio=1))  color:#lightgreen;
 				data "[C2]"  value: length(children where(each.socio=2 and each.num_car>0))/length(children where(each.socio=2)) color:#darkgreen;
 				data "[C1]"  value: length(children where(each.socio=3 and each.num_car>0))/length(children where(each.socio=3)) color:#blue;
@@ -1495,14 +1469,14 @@ experiment children_activity type: gui until:days=60 {
 		}
 			
 	}
-	display prob_walk_school{
-		chart "Active walk to school" type: histogram  background: rgb("lightGray") position:{0,0} size:{0.5,1.0} tick_font_size:12{
+	display Prob_active_travel{
+		chart "School active travel, days/week" type: histogram  background: rgb("lightGray") position:{0,0} size:{0.5,1.0} tick_font_size:12{
 				data "[0]"  value: length(children where( (each.school_walk_prob)=0))/nm_agents color:#gray;
 				data "[1-2]"  value: length(children where ((each.school_walk_prob)>0 and  (each.school_walk_prob)<=0.4))/nm_agents color:#gray;	
 				data "[3-4]"  value: length(children where( (each.school_walk_prob)>0.4 and (each.school_walk_prob)<1))/nm_agents color:#gray;	
 				data "[5]"   value: length(children where( (each.school_walk_prob)=1))/nm_agents color:#gray;						
 		}
-		chart "Walk to school prob" type: histogram  background: rgb("lightGray") position:{0.5,0} size:{0.5,1} label_font_size:30{
+		chart "Probability for school active travel, by SEP " type: histogram  background: rgb("lightGray") position:{0.5,0} size:{0.5,1} label_font_size:30{
 				
 				data "[DE]"  value: (children where( (each.socio)=1))mean_of (each.school_walk_prob) color:#lightgreen;
 				data "[C2]"  value: (children where( (each.socio)=2))mean_of (each.school_walk_prob)  color:#darkgreen;
@@ -1510,7 +1484,7 @@ experiment children_activity type: gui until:days=60 {
 				data "[AB]"  value: (children where( (each.socio)=4))mean_of (each.school_walk_prob) color:#purple;
 		}
 	}
-	display real_time_act{
+	display Real_time_act{
 		chart "real time activity" type: histogram  background: rgb("lightGray") position:{0,0} size:{1,1} label_font_size:30{
 				data "A_Sch"  value:count_a_s color:#lightgreen;
 				data "Garden"  value: count_g_a  color:#darkgreen;
@@ -1523,7 +1497,7 @@ experiment children_activity type: gui until:days=60 {
 			
 	}
 	
-	display landuse_display {
+	display Landuse_display {
 			species landuse_polygon aspect:base;
 			species road aspect: default refresh: false;
 			species building aspect: base refresh:false;
@@ -1562,33 +1536,31 @@ experiment children_activity type: gui until:days=60 {
 		monitor "zone SD mvpa" value: int(zone variance_of(each.zone_mvpa)^0.5);
 		monitor "% <=60 MVPA" value:int(100*length(children where(each.avg_mvpa<=60))/nm_agents );
 		monitor "% walking" value: per_walking;
-		monitor "r fit&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.my_fit)) with_precision 2 refresh_every: 240;
+		//monitor "r T&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.my_fit)) with_precision 2 refresh_every: 240;
 		//monitor "r Socio&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.socio)) with_precision 2 refresh_every: 240;
-		//monitor "r Sport&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.num_sport)) with_precision 2 refresh_every: 240;
-		//monitor "r crime&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.my_zone.norm_crime)) with_precision 2 refresh_every: 240;
+		//monitor "r Sport&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.num_sport)) with_precision 2 refresh_every: 240
 		//monitor "r Walk&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.avg_walk)) with_precision 2 refresh_every: 240;
-		//monitor "r Walk&sport" value:(children collect(each.num_sport))  correlation (children collect(each.avg_walk)) with_precision 2 refresh_every: 240;
-		
+		//monitor "r Walk&FSA" value:(children collect(each.num_sport))  correlation (children collect(each.avg_walk)) with_precision 2 refresh_every: 240;
 		//monitor "r outdoor&MVPA" value:(children collect(each.avg_mvpa))  correlation (children collect(each.outplay)) with_precision 2 refresh_every: 240;
 		
 	}
 }
 
 experiment 'Run_multi_simulations' type: batch repeat: 1 until:days>save_on_day{
-	parameter "File name" var:save_file<-"Scenario_v2_test_friend_imp";
+	parameter "File name" var:save_file<-"Scenario_v2_test_school_fit";
 	parameter "save on day" var:save_on_day<-26;
 	parameter 'Meet friends:' var: f_m among:[2/5] ;
 	parameter 'After school:' var: a_s among:[2/5] ;
-	parameter "Kids impact" var:imp_kids among:[0.1]; //0.25 [0.05,0.1,0.2,0.3,0.4, 0.5,0.6,0.7,0.8]
+	parameter "Kids impact" var:imp_kids among:[0.1]; 
 	parameter "Day of neigh play" var:n_p among:[1/5,2/5,3/5];
 	parameter "School intervention" var:SC_inter among:[0];		//[0,30,60]
-	parameter "Friends impact" var:imp_f among:[0.6]; //0.3               //[0,0,0.3,0.5,0.7,1.0];
+	parameter "Friends impact" var:imp_f among:[0.3];                //[0.0,0.5,0.9];
 	parameter "Travel mode" var:travel_mode among:["usual"];//among:["usual", "active_school","walk_all"]
 	init{
 		int counter<-1;	
 		write "started simulation+"+self+ date("now");
 		if counter=1{
-			string file_name<-"Scenario_v2_test_friend_imp";//update this name the same as save_file name!!!!!!!!!!!!
+			string file_name<-"Scenario_v2_test_school_fit";//update this name the same as save_file name!!!!!!!!!!!!
 			save list("S_name","travel_mode","imp_friends","school_inter","Neigh_play","friend_meet","imp_kids",
 		            "avg_mvpa","SD_mvpa","per_avg_under_sixty","per_sixty_daily","mvpa_boys","mvpa_girls",
 		            "0_30", "30_40","40_50","50_60","60_70","70_80","80_90","more90",
