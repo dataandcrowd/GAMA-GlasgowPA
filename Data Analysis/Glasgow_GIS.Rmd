@@ -13,6 +13,13 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sf)
+library(plotly)
+library(rstatix)
+library(sfarrow)
+options(scipen = 999)
+
 ```
 # Geographic Boundary
 ## Description
@@ -23,6 +30,13 @@ knitr::opts_chunk$set(echo = TRUE)
 * For more information, please visit: https://scotborders.gov.uk/info/20015/your_council/65/research_and_data/5
 
 ## What does Glasgow look like?
+
+<object data="glasgow_iz.pdf" width="800px" height="500px"> 
+    <embed src="glasgow_iz.pdf"> Glasgow Intermediate Zones
+    </embed>
+</object>
+
+
 * Output Areas: 5486 for Glasgow (11.8%); 46,351 for the whole of Scotland
 * Data Zones: 746 for Glasgow (10.6%); 6976 covering the whole of Scotland
 * Intermediate Zones: 136 for Glasgow (10.6%); 1,279 covering the whole of Scotland.
@@ -38,5 +52,64 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # Schools
+Call files: primary schools and intermediate zones
+```{r}
+schools <- 
+  read_sf("Glasgow/Bld_Schools_Glasgow.shp") %>% 
+  select(-c(FID_1, FID_2)) %>% 
+  mutate(FID = row_number()) %>% 
+  select(FID, everything())
+
+iz <- read_sf("Glasgow/Glasgow_IZ.shp")
+```
+
+
+Taking a glance on the data
+```{r}
+schools %>%
+  st_drop_geometry() %>%
+  glimpse()
+```
+
+
+Summary stats
+```{r}
+schools %>%
+  st_drop_geometry() %>% 
+  get_summary_stats() 
+```
+
+Rank by IZs
+```{r}
+# I need to do a spatial join to get a zonal stats
+# sptial join and sum
+st_join(iz, schools) %>% 
+  group_by(Name) %>% 
+  summarise(no_of_schools = sum(FID)) %>% 
+  select(Name, no_of_schools) -> schools_area
+
+schools_area %>%
+  st_drop_geometry() %>% 
+  arrange(desc(no_of_schools)) %>% 
+  print(n = Inf)
+```
+
+
+Plot
+```{r}
+
+schools_area %>% 
+  ggplot() +
+  geom_sf(aes(fill = no_of_schools),
+          show.legend = NA) +
+  theme_bw() +
+  scale_fill_continuous(low="thistle2", high="darkred", 
+                        guide="colorbar",na.value="white") +
+  theme(legend.position = "bottom") -> schools_plotly
+
+ggplotly(schools_plotly)
+```
+
+
 
 

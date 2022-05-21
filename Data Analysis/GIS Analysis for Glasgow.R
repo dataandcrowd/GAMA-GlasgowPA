@@ -13,7 +13,9 @@ schools <-
   select(FID, everything()) # display a few variables
 iz <- read_sf("Glasgow/Glasgow_IZ.shp")
 building <- read_sf("Glasgow/Bld_Glasgow.shx") %>% select(zone, area, type)
-pgarden <- read_sf("Glasgow/Private_Garden_Glasgow.shp")
+#pgarden <- read_sf("Glasgow/Private_Garden_Glasgow.shp")
+pgarden_p <- st_read_parquet("Glasgow/pgarden.parquet")
+
 
 # Glimpse
 schools %>%
@@ -76,7 +78,6 @@ plot_ly(building, split = ~type)
 
 ## Garden
 #st_write_parquet(obj=pgarden, dsn=file.path(getwd(), "pgarden.parquet"))
-pgarden_p <- st_read_parquet("pgarden.parquet")
 
 ggplot(pgarden_p) + 
   geom_sf(aes(fill = Land_use), fill = "chartreuse4", color = NA) + 
