@@ -32,7 +32,7 @@ options(scipen = 999)
 ## What does Glasgow look like?
 
 <object data="glasgow_iz.pdf" width="800px" height="500px"> 
-    <embed src="glasgow_iz.pdf"> Glasgow Intermediate Zones
+    <embed src="glasgow_iz.pdf"> 
     </embed>
 </object>
 
