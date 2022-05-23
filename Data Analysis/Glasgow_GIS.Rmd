@@ -61,6 +61,7 @@ schools <-
   select(FID, everything())
 
 iz <- read_sf("Glasgow/Glasgow_IZ.shp")
+code <- read_csv("Glasgow/dz2011_codes_and_labels_21042020.csv")
 ```
 
 
@@ -76,17 +77,21 @@ Summary stats
 ```{r}
 schools %>%
   st_drop_geometry() %>% 
-  get_summary_stats() 
+  get_summary_stats() %>% 
+  print(n = Inf) 
 ```
 
 Rank by IZs
 ```{r}
-# I need to do a spatial join to get a zonal stats
-# sptial join and sum
-st_join(iz, schools) %>% 
-  group_by(Name) %>% 
-  summarise(no_of_schools = sum(FID)) %>% 
-  select(Name, no_of_schools) -> schools_area
+left_join(schools, code, by = "DataZone") %>% 
+  select(FID, DataZone, IntZone, IntZoneName) %>% 
+  rename(InterZone = IntZone) -> sch
+
+sch %>% 
+  group_by(InterZone, IntZoneName) %>% 
+  summarise(no_of_schools = length(FID)) -> schools_area
+
+schools_area$no_of_schools %>% sum
 
 schools_area %>%
   st_drop_geometry() %>% 
@@ -97,8 +102,12 @@ schools_area %>%
 
 Plot
 ```{r}
+schools_area %>% st_drop_geometry() -> sch_df
+  
+iz %>% 
+  left_join(sch_df, by = "InterZone") -> schools_choropleth
 
-schools_area %>% 
+schools_choropleth %>% 
   ggplot() +
   geom_sf(aes(fill = no_of_schools),
           show.legend = NA) +
@@ -108,6 +117,7 @@ schools_area %>%
   theme(legend.position = "bottom") -> schools_plotly
 
 ggplotly(schools_plotly)
+
 ```
 
 
