@@ -31,10 +31,10 @@ options(scipen = 999)
 
 ## What does Glasgow look like?
 
-<object data="glasgow_iz.pdf" width="800px" height="500px"> 
-    <embed src="glasgow_iz.pdf"> 
-    </embed>
-</object>
+```{r, echo=F}
+knitr::include_graphics("glasgow_iz.jpg")
+```
+
 
 
 * Output Areas: 5486 for Glasgow (11.8%); 46,351 for the whole of Scotland
@@ -56,9 +56,8 @@ Call files: primary schools and intermediate zones
 ```{r}
 schools <- 
   read_sf("Glasgow/Bld_Schools_Glasgow.shp") %>% 
-  select(-c(FID_1, FID_2)) %>% 
-  mutate(FID = row_number()) %>% 
-  select(FID, everything())
+  select(DataZone, SAPE2014, Rank) %>% 
+  mutate(FID = row_number()) 
 
 iz <- read_sf("Glasgow/Glasgow_IZ.shp")
 code <- read_csv("Glasgow/dz2011_codes_and_labels_21042020.csv")
