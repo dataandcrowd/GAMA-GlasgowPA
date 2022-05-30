@@ -1,4 +1,5 @@
-ENV["R_HOME"] = "C:\\Program Files\\R\\R-4.1.3"
+ENV["R_HOME"] = "C:\\Program Files\\R\\R-4.1.3" ## Windows
+ENV["R_HOME"] = "/Library/Frameworks/R.framework/Resources" ##MacOSX
 
 using Pkg
 #Pkg.add("RCall") #<- Essential
