@@ -7,3 +7,7 @@ using RCall
 
 #ggplot(diamonds, aes(x=carat, y=price)) + geom_point() +  theme_bw()
 
+@rlibrary sf
+#R"library(dplyr)"
+
+#nc = R"st_read(system.file("shape/nc.shp")"
