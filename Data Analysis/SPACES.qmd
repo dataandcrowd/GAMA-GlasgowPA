@@ -4,7 +4,6 @@ format: html
 editor: visual
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -14,10 +13,9 @@ options(scipen = 999)
 
 ```
 
-
 ```{r, echo=FALSE, warning=F, message=F}
 datazone_name <- read_csv("Glasgow/dz2011_codes_and_labels_21042020.csv")
-datazone <- read_sf("Glasgow/SG_DataZone_Bdry_2011.shp")
+datazone <- read_sf("Glasgow/Glasgow_DataZoneBdry2011.shp")
 childagg <- read_csv("Glasgow/ChildrenPOP_ScottishDZ.csv")
 ```
 
@@ -28,12 +26,18 @@ left_join(datazone, childagg, by = "DataZone") %>%
   select(DataZone, DataZoneName, Freq.) %>% 
   rename(No_of_Children = Freq.) %>% 
   mutate(No_of_Children = replace_na(No_of_Children, 0))-> sch
-
-
-
 ```
 
 ## Some Basic Stats
+Within the Glasgow boundary, we have forty children from the SPACES data.
+
+```{r, echo=FALSE}
+sch %>% 
+  st_drop_geometry() %>% 
+  tally(No_of_Children)
+
+```
+
 Here is the first 20 rows of the SPACES children by Scottish Datazones. Pollokshields East - 04, Greenfield - 06, Woodside - 04, North Kelvin - 05, and Scotstoun North and East have two children.
 
 ```{r, echo=FALSE}
@@ -43,14 +47,17 @@ sch %>%
   print(n = 20)
 ```
 
+## Some Maps
+
 ```{r, echo=FALSE}
 sch %>% 
-  st_drop_geometry() %>% 
-  tally(No_of_Children)
-
+  mutate(No_of_Children = factor(No_of_Children)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = No_of_Children), show.legend = NA, colour = "grey") +
+  scale_fill_manual(values = c("grey50", "red", "blue")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
-
-
 
 ```{r, echo=FALSE}
 ## Transform to a lat long coordinate
@@ -69,18 +76,7 @@ labels <- sprintf(
 ) %>% lapply(htmltools::HTML)
 ```
 
-
-```{r}
-sch %>% 
-  mutate(No_of_Children = factor(No_of_Children)) %>% 
-  ggplot() +
-  geom_sf(aes(fill = No_of_Children), show.legend = NA, colour = "grey") +
-  scale_fill_manual(values = c("red", "blue"), na.value = "grey50") +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-
-
+## Web maps to toggle around
 
 ```{r, echo = F}
 
