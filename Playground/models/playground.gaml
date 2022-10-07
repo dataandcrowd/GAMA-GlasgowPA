@@ -14,10 +14,12 @@ global {
 	
 	file buildings_shapefile <- shape_file("../includes/gaelic_building.shp", true);
 	shape_file playgrounds_shapefile <- shape_file("../includes/gaelic_playground.shp");
+	shape_file playgrounds_env <- shape_file("../includes/gaelic_playground_env.shp");
 	
-	geometry shape <- envelope(buildings_shapefile);
+	geometry shape <- envelope(playgrounds_env);
 	geometry open_area;
 	
+	int nb_obstacles <- 0 parameter: true;
 	
 	init {
 		create buildings from:buildings_shapefile {
@@ -34,7 +36,7 @@ global {
 		}
 	}
 	
-	reflex stop when: cycle = 1000 {
+	reflex stop when: cycle = 10000 {
 		do pause;
 	}
 	
@@ -43,9 +45,11 @@ global {
 
 species buildings {
 	bool is_building <- true;
-	aspect default { 
-		draw shape  border: #darkgray width: 4;
-	}
+	float height <- rnd(10#m, 20#m) ;
+    
+    aspect default {
+    draw shape color: #dodgerblue border: #black depth: height;
+    }
 	
 }
 
@@ -59,9 +63,14 @@ species playground {
 }
 
 
-species children {
+species children skills: [pedestrian] {
 	rgb color <- rnd_color(255);
-	float speed <- gauss(5,1.5) #km/#h min: 2 #km/#h;
+	float speed <- gauss(2,1.5) #km/#h min: 2 #km/#h;
+	bool avoid_other <- true;
+	
+	reflex basic_move {
+		do wander amplitude: 30.0 bounds: open_area;
+	}
 	
 	
 	
@@ -72,9 +81,9 @@ experiment playground_sim type: gui {
 	//float minimum_cycle_duration <- 0.02;
 		output {
 		display map type: opengl{
-			species playground refresh: false;
-			species buildings refresh: false;
-			species children refresh: false;
+			species playground aspect:default;
+			species buildings aspect:default;
+			species children;
 
 		}
 	}
