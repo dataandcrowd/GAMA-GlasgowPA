@@ -4,7 +4,6 @@
 * Tags: 
 */
 
-
 model playground
 
 /* Insert your model definition here */
@@ -16,7 +15,7 @@ global {
 	shape_file playgrounds_shapefile <- shape_file("../includes/gaelic_playground.shp");
 	shape_file playgrounds_env <- shape_file("../includes/gaelic_playground_env.shp");
 	
-	geometry shape <- envelope(playgrounds_env);
+	geometry shape <- envelope(envelope(playgrounds_env)+envelope(buildings_shapefile));
 	geometry open_area;
 	
 	
@@ -31,7 +30,7 @@ global {
 		
 		
 		// Create children
-		create children number: 250 {
+		create children number: 100 {
 			int id <- int(self);
 			location <- any_location_in(open_area);
 			current_target <- one_of(target_list) ;
@@ -50,23 +49,16 @@ global {
 			else{
 				age <- 10;
 				}
-			
-				
 			}
 }
-	/* 
-	reflex stop when: cycle = 10000 {
-		do pause;
-	}
 	 
-	*/
-
-
-
-
+	reflex stop when: children all_match(each.current_target = each.location){
+		do pause;
+		
+		list<agent> var0 <- agents_overlapping(self);
+		write var0;
+	}
 	int tick <- 1;
-	  
-	
 	/* 
 	reflex tiktok {
 	  write counter;
@@ -91,7 +83,7 @@ species playground {
 	bool is_building <- false;
 	
 	aspect default { 
-		draw shape color: #white border: #black;
+		draw shape color: #lightsteelblue border: #white;
 	}
 	
 }
@@ -102,17 +94,15 @@ species children skills: [moving] schedules: shuffle(children){
 	image_file girl_icon <- image_file("../includes/girl.png");
 	
 	/*agent's personal status*/
-	float speed <- gauss(0.1,0.3) #km/#h min: 0.2 #km/#h;
+	float speed <- gauss(0.07,0.04) #km/#h min: 0.03 #km/#h;
 	bool avoid_other <- true;
 	string gender;
 	bool gender_int <- flip (0.5);
 	bool age_int <- flip (0.2);
 	int age;
-	list target_list  <- [{90, 90}, {50,50}];
+	list target_list  <- [{100, 60}, {110,59.5}, {120,59}, {130,58}];
 	point current_target;
-	int counter <- 500 update: counter - tick;
-	
-	
+	int counter <- 10000 update: counter - tick;
 	
 	
 	/*agent shape */
@@ -123,23 +113,22 @@ species children skills: [moving] schedules: shuffle(children){
     //		draw circle(1#m) color: (gender_int ? #red : #green);
     		
    	//}
-    
-        
-        
-
-	
-	//mobility pattern
+    	
+/* mobility pattern*/
 	reflex breaktime {
 		if (counter >= 0){
-		do wander amplitude: 50.0 bounds: open_area;
+		do wander amplitude: 45.0 bounds: open_area;
 		}
-		else{do goto target: current_target;}
+		else{do goto target: current_target speed: 0.002;
+			
+			//if the cell contains more than two people 
+			//then move to 1 cell south
+		
+		}
+		
+		
 	}
-	}
-
-
-
-
+}
 
 experiment playground_sim type: gui {
 		output {
