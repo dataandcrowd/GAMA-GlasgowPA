@@ -42,9 +42,9 @@ global {
 	
 	
 	//MVPA probabilities
-	float mvpa_walk <- float(data[3,23]);///###23   
-	float mvpa_pe_b <- float(data[4,19]);////19
-	float mvpa_pe_g      <- float(data[3,19]);////19
+	float mvpa_walk <- float(data[3,23]); // LU_MVPA_G & Line 23   
+	float mvpa_pe_girls <- float(data[3,19]); // LU_MVPA_Girls & Line19: MVPA PE Girls
+	float mvpa_pe_boys <- float(data[4,19]); // LU_MVPA_Boys & Line19: MVPA PE Girls
 	float mvpa_arrival_b <- float(data[4,9]);//9
 	float mvpa_arrival_g <- float(data[3,9]);//9
 	float mvpa_recess_b  <- float(data[4,13]);//13
@@ -95,7 +95,7 @@ global {
 	float imp_f<-0.3; //impact of friends on my_fit
 	string travel_mode<-"usual" among:["usual", "active_school","walk_all"];
 	graph child_graph<-([]);
-	string optimizer_type <- "Dijkstra" among: ["NBAStar", "NBAStarApprox", "Dijkstra", "AStar", "BellmannFord", "FloydWarshall"];
+	string optimizer_type <- "AStar" among: ["NBAStar", "NBAStarApprox", "Dijkstra", "AStar", "BellmannFord", "FloydWarshall"];
 	/* types of optimizer (algorithms) can be used for the shortest path computation:
 	 *    - Dijkstra: ensure to find the best shortest path - compute one shortest path at a time: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 	 * 	  - BellmannFord: ensure to find the best shortest path - compute one shortest path at a time: https://en.wikipedia.org/wiki/Bellman-Ford_algorithm
@@ -934,10 +934,10 @@ species children skills: [moving] {
 			float social_inf<-(1-imp_f)*my_fit+imp_f*my_best_friends mean_of(each.my_fit);
 	 		int tmp_mvpa;
 	 		if gender= 'boy'{
-	 			tmp_mvpa<- int(mvpa_school*(320-SC_inter)+social_inf*(40*mvpa_recess_b+rnd(1,15)*mvpa_arrival_b+PE*60*mvpa_pe_b+ mvpa_pe_b*SC_inter));//MVPA for two break-time, during class and for arraivel	
+	 			tmp_mvpa<- int(mvpa_school*(320-SC_inter)+social_inf*(40*mvpa_recess_b+rnd(1,15)*mvpa_arrival_b+PE*60*mvpa_pe_boys+ mvpa_pe_boys*SC_inter));//MVPA for two break-time, during class and for arraivel	
 	 		}
 	 		else {
-	 		    tmp_mvpa<- int(mvpa_school*(320-SC_inter)+ social_inf*(40*mvpa_recess_g+rnd(1,15)*mvpa_arrival_g+PE*60*mvpa_pe_g+mvpa_pe_g*SC_inter));//MVPA for two break-time, during class and for arraivel	
+	 		    tmp_mvpa<- int(mvpa_school*(320-SC_inter)+ social_inf*(40*mvpa_recess_g+rnd(1,15)*mvpa_arrival_g+PE*60*mvpa_pe_girls+mvpa_pe_girls*SC_inter));//MVPA for two break-time, during class and for arraivel	
 	 		}
 	 		tot_mvpa<-tot_mvpa +tmp_mvpa; 
 	 		list_lu_mvpa[20]<-list_lu_mvpa[20]+tmp_mvpa;	
