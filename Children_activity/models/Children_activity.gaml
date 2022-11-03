@@ -147,10 +147,10 @@ global {
 				perimeter::int(read("perimeter")),poly_id::int(read("Poly_ID"))];
 		create landuse_polygon from:leisure_shape_file with: [code::26, lu_name::"Leisure"];//ading the leisure centers to land use layer
 		ask landuse_polygon{   
-			mvpa_prob_G<-float(data[5,code]);
-			mvpa_prob_B<-float(data[6,code]);
-			lu_name<-string(data[2,code]);
-			color<-rgb(int(data[7,code]),int(data[8,code]),int(data[9,code]));
+			mvpa_prob_G <- float(data[3,code]);
+			mvpa_prob_B <- float(data[4,code]);
+			lu_name     <- string(data[2,code]);
+			color       <- rgb(int(data[5,code]),int(data[6,code]),int(data[7,code]));
 			if [14,15,21,26, 20] contains code{add self to:sport_poly;}
 			if neigh_codes contains code{add self to: neigh_act_poly; }
 			if after_school_codes contains code{add self to: afterSchool_act_poly; }
