@@ -31,7 +31,7 @@ global {
 	float current_hour <-7.8 ;
 	int   days <- 1 ;
 	int   week_day <- 1;
-	graph the_graph; 
+	graph road_network; 
 	int   nb_agents  <- length(children);
 	bool  act_hours <- false ;//act hours are:15:00-19:00
 	int   save_on_day <- 100;
@@ -87,17 +87,17 @@ global {
 	int mvpa_recent_avg<-0;
 	
 	
-	//proba of activities
-	float f_m<-2/5;//prob to meet a friend 
-	float a_s<-2/5; //prob for after school activity on the route home 
-	float n_p<-1/5; //prob playing at the neighborhood
-	float f_o<-0.5; //prob of friends to goout
-	float s_a<-1/5;//prob shopping 
-	float g_a<-0.0; //prob for garden play
-	float imp_kids<-0.1;
-	float imp_f<-0.3; //impact of friends on my_activeness
-	string travel_mode<-"usual" among:["usual", "active_school","walk_all"];
-	graph child_graph<-([]);
+	//probability of activities
+	float f_m <- 2/5; //probability to meet a friend 
+	float a_s <- 2/5; //probability for after school activity on the route home 
+	float n_p <- 1/5; //probability playing at the neighborhood
+	float f_o <- 0.5; //probability of friends to goout
+	float s_a <- 1/5; //probability shopping 
+	float g_a <- 0.0; //probability for garden play
+	float imp_kids <- 0.1;
+	float imp_friends_influence <- 0.3; //impact of friends on my_activeness
+	string travel_mode <- "usual" among:["usual", "active_school","walk_all"];
+	graph child_graph <- ([]);
 	string optimizer_type <- "AStar" among: ["NBAStar", "NBAStarApprox", "Dijkstra", "AStar", "BellmannFord", "FloydWarshall"];
 	/* types of optimizer (algorithms) can be used for the shortest path computation:
 	 *    - Dijkstra: ensure to find the best shortest path - compute one shortest path at a time: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
@@ -160,11 +160,12 @@ global {
 			mvpa_prob_B <- float(data[4,code]);
 			lu_name     <- string(data[2,code]);
 			color       <- rgb(int(data[5,code]),int(data[6,code]),int(data[7,code]));
-			if [14,15,21,26,20] contains code {add self to:sport_poly;}
+			if [14,15,20,21,26] contains code {add self to:sport_poly;}
+			   // 14: Other sports, 15: Playing fiels, 20: School Lesson, 21: Tennis, 26: FSA  
 			if neigh_codes contains code {add self to: neigh_act_poly;}
 			if after_school_codes contains code {add self to: afterSchool_act_poly; }
 		}
-		ask neigh_act_poly where([2,3] contains each.code and each.area<1000){ //remove residential amenity  with area<1000
+		ask neigh_act_poly where([2,3] contains each.code and each.area < 1000){ //remove residential amenity  with area<1000
 			remove self from:neigh_act_poly;	
 		}
 		
@@ -174,8 +175,10 @@ global {
 		
 		create food_drink from:food_drink_shapefile with: [density::int(read("density")),poly_id::int(read("Poly_ID")) ];// number of shops in buffer 100 around the shop
 		
-		the_graph <- as_edge_graph(list(road));
-		the_graph <- the_graph with_optimizer_type optimizer_type; //allows to choose the type of algorithm to use compute the shortest paths
+		road_network <- as_edge_graph(list(road));
+		road_network <- road_network with_optimizer_type optimizer_type; //allows to choose the type of algorithm to use compute the shortest paths
+	 	//road_network <- road_network with_shortestpath_algorithm TransitNodeRouting;
+	 	
 	 	
 	 	create building from: buildings_shapefile with: [
 			 type::string(read ("type")), zone::string(read ("zone")),area::int(read ("area")), 
@@ -191,7 +194,7 @@ global {
 			list<building> zone_homes <- residential where (each.zone=self.dataZone);
 	 		create children number: nb_children {
 				counting<-counting+1;
-				if counting/1000=int(counting/1000){
+				if counting/1000 = int(counting/1000){
 					write counting;	
 				}
 				my_zone  <- myself;
@@ -250,7 +253,7 @@ global {
 
 	action cal_sch_walk_prob {
 		ask children parallel:true {
-			school_route<-path_between (the_graph, my_home, my_school);
+			school_route<-path_between (road_network, my_home, my_school);
 			if school_route=nil{
 				do die;
 				}
@@ -259,24 +262,24 @@ global {
 				school_walk_prob<-1.0;
 				}
 			else{
-				float coef_dis<- -1.6*ln(dis_school/250)+0.056;  //-1.1*ln(dis/250)+0.056
-				float coef_walkb<-my_home.walk_quant=1?0: -0.035*(my_home.walk_quant-1)^2+0.0678*(my_home.walk_quant-1)-0.8382;// -0.0292*(walk-1)^2+0.0678*(walk-1)-0.838
+				float coef_dis   <- -1.6*ln(dis_school/250)+0.056;  //-1.1*ln(dis/250)+0.056
+				float coef_walkb <- my_home.walk_quant=1?0: -0.035*(my_home.walk_quant-1)^2+0.0678*(my_home.walk_quant-1)-0.8382;// -0.0292*(walk-1)^2+0.0678*(walk-1)-0.838
 				float winter_coef<- -0.3;
-				float logit_0<- -5.807733-(-1.427+coef_walkb+coef_dis+winter_coef);   //cut1-(-1.427+coef_walk+coef_dis)
-				float logit_1_2<- -4.922359-(-1.427+coef_walkb+coef_dis+winter_coef);////cut2-(-1.427+coef_walk+coef_dis)
-				float logit_3_4<- -3.9048-(-1.427+coef_walkb+coef_dis+winter_coef);////cut3-(-1.427+coef_walk+coef_dis) ******cu1,cut2,cut3 are coefficient from ordinal logistic regression -1.427 is the coef of latitude- impact of weather in Glasgow 
-				float cum_prob0<- exp(logit_0)/(1+exp(logit_0));
+				float logit_0    <- -5.807733-(-1.427+coef_walkb+coef_dis+winter_coef);   //cut1-(-1.427+coef_walk+coef_dis)
+				float logit_1_2  <- -4.922359-(-1.427+coef_walkb+coef_dis+winter_coef);////cut2-(-1.427+coef_walk+coef_dis)
+				float logit_3_4  <- -3.9048-(-1.427+coef_walkb+coef_dis+winter_coef);////cut3-(-1.427+coef_walk+coef_dis) ******cu1,cut2,cut3 are coefficient from ordinal logistic regression -1.427 is the coef of latitude- impact of weather in Glasgow 
+				float cum_prob0  <- exp(logit_0)/(1+exp(logit_0));
 				float cum_prob_1_2<- exp(logit_1_2)/(1+exp(logit_1_2));
 				float cum_prob_3_4<- exp(logit_3_4)/(1+exp(logit_3_4));
-				float prob0<-cum_prob0;
-				float prob1_2<-cum_prob_1_2-cum_prob0;
+				float prob0   <-cum_prob0;
+				float prob1_2 <-cum_prob_1_2-cum_prob0;
 				float prob_3_4<-cum_prob_3_4-cum_prob_1_2;
-				float prob_5<-1-cum_prob_3_4;
-				int cat<-rnd_choice(prob0,prob1_2,prob_3_4,prob_5); //One of the number of active walking categories is selected  
-				school_walk_prob<-([0,rnd(0.2,0.4),rnd(0.4,0.8),rnd(0.8,1.0)][cat])  ;		
+				float prob_5  <-1-cum_prob_3_4;
+				int   cat <- rnd_choice(prob0,prob1_2,prob_3_4,prob_5); //One of the number of active walking categories is selected  
+				school_walk_prob <- ([0,rnd(0.2,0.4),rnd(0.4,0.8),rnd(0.8,1.0)][cat])  ;		
 				}
-				if dis_school>2500 and num_car>0{
-					school_walk_prob<-0.0;	
+				if dis_school > 2500 and num_car > 0 {
+					school_walk_prob <- 0.0;	
 					}	
 				}
 		ask zone parallel:true {
@@ -284,33 +287,33 @@ global {
 		}	
 	}
 	
-	action assign_garden_actlist{
-	 	ask children parallel:true{
-	 		my_garden<-private_garden where(self distance_to each<25) closest_to self;      
-			act_list<-my_garden=nil?[1,2]:[1,2,3]; //list for activities from home 1-shoping, 2-neigh, 3-graden (incase the agent has one)
+	action assign_garden_actlist {
+	 	ask children parallel:true {
+	 		my_garden <- private_garden where(self distance_to each < 25) closest_to self;      
+			act_list  <- my_garden = nil? [1,2]:[1,2,3]; //list for activities from home 1-shoping, 2-neigh, 3-graden (incase the agent has one)
 		 }	
 	}
 	
-	action assign_neigh_lu{
-		ask children parallel:true{
-			list<landuse_polygon> extended_neigh_poly<-neigh_act_poly where(each distance_to self <=800);  //selecting only land use within 800 meter
-			extended_neigh_poly<-extended_neigh_poly sort_by (each distance_to self); 
+	action assign_neigh_lu {
+		ask children parallel:true {
+			list<landuse_polygon> extended_neigh_poly <- neigh_act_poly where(each distance_to self <= 800);  //selecting only land use within 800 meter
+			extended_neigh_poly <- extended_neigh_poly sort_by (each distance_to self); 
 			list<landuse_polygon> temp_list;
-			list<int> neigh_poly_codes<-extended_neigh_poly collect(each.code);
-			loop s over: neigh_codes{
+			list<int> neigh_poly_codes <- extended_neigh_poly collect(each.code);
+			loop s over: neigh_codes {
 				if neigh_poly_codes contains s {
-					int k<-min(3,length(extended_neigh_poly where(each.code=s)));//taking the max 5 polygon of each type in 800 meter around the house
-					loop times:k{
-						landuse_polygon this_poly<-extended_neigh_poly first_with(each.code=s);
+					int k <- min(3,length(extended_neigh_poly where(each.code=s)));//taking the max 5 polygon of each type in 800 meter around the house
+					loop times:k {
+						landuse_polygon this_poly <- extended_neigh_poly first_with(each.code=s);
 						temp_list<<this_poly;
 						remove this_poly from: extended_neigh_poly;	
 						}				
 					}		
 				}
-			neigh_poly<-temp_list;
-			ask neigh_poly{
-				path route<-path_between(the_graph, self,myself);
-				dis_child<-int(route.edges sum_of (each.perimeter));
+			neigh_poly <- temp_list;
+			ask neigh_poly {
+				path route <- path_between(road_network, self,myself);
+				dis_child  <- int(route.edges sum_of (each.perimeter));
 				}
 			neigh_poly<-neigh_poly sort_by(each.dis_child);
 			neigh_map<-neigh_poly as_map(each::each.dis_child);//the keys is the polygon, the elment is the distance			
@@ -320,10 +323,10 @@ global {
 	action assign_routehome_lu {
 		ask children parallel:true{
 			geometry polyline_home<-polyline(school_route.edges);
-			after_sc_poly<-afterSchool_act_poly where(distance_to(each,polyline_home) <500); //land use within 500 meter around the route home
+			after_sc_poly<-afterSchool_act_poly where(distance_to(each,polyline_home) < 500); //land use within 500 meter around the route home
 			ask after_sc_poly{
-				path route <- path_between(the_graph, self,myself.my_school);//between school and the lu
-				path route1 <- path_between(the_graph, self,myself.my_home);//between lu to home
+				path route <- path_between(road_network, self,myself.my_school);//between school and the lu
+				path route1 <- path_between(road_network, self,myself.my_home);//between lu to home
 				if route = nil or route1 = nil {
 					remove self from:myself.after_sc_poly;
 				}
@@ -333,20 +336,20 @@ global {
 					}	
 				}	
 			if after_sc_poly=nil{do die;}
-			after_sc_map<-after_sc_poly as_map(each::each.dis_child);//the keys is the polygon, the elment is the distance	
+			after_sc_map <- after_sc_poly as_map(each::each.dis_child);//the keys is the polygon, the elment is the distance	
 		}
 	}
 	
 	action assign_shops {
 		ask children parallel:true{
-			list_food_drink<-food_drink where(each distance_to self<1000);
-			int tmp<-length(list_food_drink);
-			if tmp>0{
-				list_food_drink<-copy_between (list_food_drink,0,min(tmp,9));
-				list_food_drink<-(reverse(list_food_drink sort_by(each.density)));	
+			list_food_drink <- food_drink where(each distance_to self<1000);
+			int tmp <- length(list_food_drink);
+			if tmp > 0 {
+				list_food_drink <- copy_between (list_food_drink,0,min(tmp,9));
+				list_food_drink <- reverse(list_food_drink sort_by(each.density));	
 				}
-			list_food_drink<-(reverse(list_food_drink sort_by(each.density)));		
-		}
+				list_food_drink <- reverse(list_food_drink sort_by(each.density));		
+				}
 	}
 	
 	action assign_fsa {
@@ -358,12 +361,12 @@ global {
 				if my_social_status = 3 {num_sport<- rnd_choice([0.3, 0.18, 0.3, 0.075,0.075, 0.07]);}
 				if my_social_status = 4 {num_sport<-rnd_choice([0.15,0.2,0.35,0.07,0.07,0.14]);}	
 					}
-			if num_sport>0  {
+			if num_sport > 0 {
 				create sport_activity number:num_sport {
-					int sport_type<-one_of([0,1,2]);//33% sport in Leisure center, 33% in sport fields, 33% in schools
-					if sport_type=0{act_poly<-one_of(sport_poly where(each distance_to myself <1500 and each.code=26));if act_poly=nil{sport_type<-one_of([1,2]);}}//sport in leisure center 
-					if sport_type=1{act_poly<- one_of(sport_poly where(each distance_to myself <1500 and [14,15,21]contains each.code));if act_poly=nil{sport_type<-2;}}//team sport in play fields
-					if sport_type=2{act_poly<-one_of(sport_poly where(each distance_to myself <1500 and each.code=20));}//sport activity in school
+					int sport_type <- one_of([0,1,2]);//33% sport in Leisure center, 33% in sport fields, 33% in schools
+					if sport_type = 0{act_poly <- one_of(sport_poly where(each distance_to myself <1500 and each.code=26));if act_poly=nil{sport_type<-one_of([1,2]);}}//sport in leisure center 
+					if sport_type = 1{act_poly <- one_of(sport_poly where(each distance_to myself <1500 and [14,15,21]contains each.code));if act_poly=nil{sport_type<-2;}}//team sport in play fields
+					if sport_type = 2{act_poly <- one_of(sport_poly where(each distance_to myself <1500 and each.code=20));}//sport activity in school
 					my_child<-myself;
 					type<-"sport";
 					hour<-one_of([16,17,18]);
@@ -394,12 +397,11 @@ global {
 		}	
 	}
 	
-	ask children parallel:true{
+	ask children parallel:true {
 		my_best_friends <- list<children>(child_graph neighbors_of(self));
 		num_friends <- length(my_best_friends);
 		//fit_dif<-my_activeness-my_best_friends mean_of(each.my_activeness);	
 		act_list<-my_garden=nil?[1,2]:[1,2,3];//updating the list of activities from home shoping=1, neigh=2,garden=3
-		
 		}
 	}
 	
@@ -543,7 +545,7 @@ reflex save_simulation when:days=save_on_day and current_hour=8.0{
 		string file_name<-"../includes/results/"+save_file;
 		save zone type: "csv" to: file_name+"/zone/Sc_int"+SC_inter+travel_mode+"/"+"Neigh_play"+n_p+"/zone"+"SC"+SC_inter+"np"+n_p+"imp_k"+imp_kids+self+ ".csv" ; 
 		save children type: "csv" to: file_name+"/children/Sc_int"+SC_inter+"_"+travel_mode+"/"+"Neigh_play"+n_p+"/children"+"SC"+SC_inter+"np"+n_p+"imp_k"+imp_kids+self+ ".csv" ; 
-		list tmp<-["s_name",travel_mode,imp_f,SC_inter,n_p,f_m,imp_kids,avg_mvpa,SD_mvpa,per_avg_under_sixty,per_daily_sixty,avg_mvpa_boy,avg_mvpa_girl, zero_to_30,thirty_to_40,forty_to_50,fifty_to_60,sixty_to_70,seventy_to_80,Eighty_to_90,ninty_over,
+		list tmp<-["s_name",travel_mode,imp_friends_influence,SC_inter,n_p,f_m,imp_kids,avg_mvpa,SD_mvpa,per_avg_under_sixty,per_daily_sixty,avg_mvpa_boy,avg_mvpa_girl, zero_to_30,thirty_to_40,forty_to_50,fifty_to_60,sixty_to_70,seventy_to_80,Eighty_to_90,ninty_over,
 				mvpa_my_social_status1,mvpa_my_social_status2,mvpa_my_social_status3,mvpa_my_social_status4,walk_my_social_status1,walk_my_social_status2,walk_my_social_status3,walk_my_social_status4,
 				R_mvpa_my_social_status,R_mvpa_sport,R_mvpa_crime,R_mvpa_walk,R_mvpa_fit,R_mvpa_outplay, R_mvpa_dmin_outplay,R_simd,R_car,R_friends,
 				mvpa_home,mvpa_sc,mvpa_road,mvpa_play_field,mvpa_park,mvpa_PG,mvpa_amenity,mvpa_shops,mvpa_friends_home,mvpa_fsa,mvpa_total_outdoor,mvpa_home_girlsarden,
@@ -553,7 +555,7 @@ reflex save_simulation when:days=save_on_day and current_hour=8.0{
 	}
 	
 action write_headings{
-		save list(["S_name","travel_mode","imp_friends","school_inter","Neigh_play","friend_meet","imp_kids",
+		save list(["S_name","travel_mode","imp_friends_influenceriends","school_inter","Neigh_play","friend_meet","imp_kids",
 		            "avg_mvpa","SD_mvpa","per_avg_under_sixty","per_sixty_daily","mvpa_boys","mvpa_girls",
 		            "0_30", "30_40","40_50","50_60","60_70","70_80","80_90","more90",
 		            "mvpa1","mvpa2","mvpa3","mvpa4","walk1","walk2","walk3","walk4",
@@ -891,7 +893,7 @@ species children skills: [moving] {
 
 	action transport_mode(bool return_same_mode){
 		if return_same_mode=false{
-			path my_route<-path_between (the_graph, location, target);
+			path my_route<-path_between (road_network, location, target);
 			dis_target<-int(my_route.edges sum_of (each.perimeter));
 			float walk_prob;
 			if purpose='go_school'{
@@ -912,7 +914,7 @@ species children skills: [moving] {
 	
 	reflex move_to_target when:target!=nil{
 		
-		do goto on:the_graph target:target speed:my_speed; 
+		do goto on:road_network target:target speed:my_speed; 
 		
 		if  trans_mode=1 {
 			if flip(mvpa_walk){ 
@@ -933,7 +935,7 @@ species children skills: [moving] {
 			my_activity<-"School";
 			lu_list[20]<-lu_list[20]+60*6;
 			int PE<-my_school.pe_day=week_day?1:0;
-			float social_inf<-(1-imp_f)*my_activeness+imp_f*my_best_friends mean_of(each.my_activeness);
+			float social_inf<-(1-imp_friends_influence)*my_activeness+imp_friends_influence*my_best_friends mean_of(each.my_activeness);
 	 		int tmp_mvpa;
 	 		if gender= 'boy'{
 	 			tmp_mvpa<- int(mvpa_school*(320-SC_inter)+social_inf*(40*mvpa_recess_boys+rnd(1,15)*mvpa_arrival_boys+PE*60*mvpa_pe_boys+ mvpa_pe_boys*SC_inter));//MVPA for two break-time, during class and for arraivel	
@@ -1083,12 +1085,12 @@ species children skills: [moving] {
 		target<-loc;
 		if with_friends{
 			if length(host_friends)>0{
-				my_mvpa<-mvpa*((1-imp_f)*my_activeness+imp_f*host_friends mean_of(each.my_activeness));	
+				my_mvpa<-mvpa*((1-imp_friends_influence)*my_activeness+imp_friends_influence*host_friends mean_of(each.my_activeness));	
 			} 
 			else{
 				list<children> tmp_friends<-goto_friend.host_friends where(each!=self);
 				add goto_friend to:tmp_friends;
-				my_mvpa<-mvpa*((1-imp_f)*my_activeness+imp_f*tmp_friends mean_of(each.my_activeness));	
+				my_mvpa<-mvpa*((1-imp_friends_influence)*my_activeness+imp_friends_influence*tmp_friends mean_of(each.my_activeness));	
 			}	
 		}
 		else{
@@ -1295,7 +1297,7 @@ species children skills: [moving] {
 				my_activity<-'Host friends'	;
 				my_lu_code<-24;
 				float tmp_mvpa<-gender="boy"?mvpa_friends_in_boys:mvpa_friends_in_girls;
-				my_mvpa<-tmp_mvpa*((1-imp_f)*my_activeness+imp_f*host_friends mean_of(each.my_activeness));	
+				my_mvpa<-tmp_mvpa*((1-imp_friends_influence)*my_activeness+imp_friends_influence*host_friends mean_of(each.my_activeness));	
 				ask host_friends{
 					count_friends_in<-count_friends_in+1;
 					purpose<-'go_meet';
@@ -1333,7 +1335,7 @@ experiment Simulation type: gui until:days=60 {
 	parameter "Shoping" var: s_a category:'Activities';//prob shopping 0.1
 	parameter "Play in garden" var:g_a category:'Activities';//prob garden 0.2
 	parameter "Impact- presence of others outdoor" var:imp_kids category:'Impacts';//impact of others palying in area
-	parameter "Adaptation- agents' tendency to peers" var:imp_f category:'Impacts';
+	parameter "Adaptation- agents' tendency to peers" var:imp_friends_influence category:'Impacts';
 	parameter "School intervention, PE min/day" var:SC_inter category:'Interventions';//duration of extra PA activity in school
 	parameter "Travel mode" var:travel_mode category:'Travel';//usual, walk_school,walk_all
 	
