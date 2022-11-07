@@ -1,0 +1,78 @@
+/**
+* Name: savesimulation
+* Based on the internal empty template. 
+* Author: hyesopshin
+* Tags: 
+*/
+
+
+model savesimulation
+
+/* Insert your model definition here */
+
+
+reflex save_simulation when:days=save_on_day and current_hour=8.0{
+		write "saving simulation+"+self+ date("now");
+		ask children parallel:true {do collect_mvpa;}
+		ask zone parallel:true{do zone_stat;}	
+		float zero_to_30    <- length(children where(each.avg_mvpa<=30))/nb_agents with_precision 2;
+		float thirty_to_40  <- length(children where(each.avg_mvpa>30 and each.avg_mvpa<40))/nb_agents with_precision 2;
+		float forty_to_50   <- length(children where(each.avg_mvpa>=40 and each.avg_mvpa<50))/nb_agents with_precision 2;
+		float fifty_to_60   <- length(children where(each.avg_mvpa>=50 and each.avg_mvpa<60))/nb_agents with_precision 2;
+		float sixty_to_70   <- length(children where(each.avg_mvpa>=60 and each.avg_mvpa<70))/nb_agents with_precision 2;
+		float seventy_to_80 <- length(children where(each.avg_mvpa>=70 and each.avg_mvpa<80))/nb_agents with_precision 2;
+		float Eighty_to_90  <- length(children where(each.avg_mvpa>=80 and each.avg_mvpa<90))/nb_agents with_precision 2;
+		float ninty_over    <- length(children where(each.avg_mvpa>=90))/nb_agents;
+		float per_avg_under_sixty <- zero_to_30 + thirty_to_40+forty_to_50+fifty_to_60;
+		
+		int mvpa_my_social_status1 <- int(children where(each.my_social_status=1) mean_of (each.avg_mvpa));
+		int mvpa_my_social_status2 <- int(children where(each.my_social_status=2) mean_of (each.avg_mvpa));
+		int mvpa_my_social_status3 <- int(children where(each.my_social_status=3) mean_of (each.avg_mvpa));
+		int mvpa_my_social_status4 <- int(children where(each.my_social_status=4) mean_of (each.avg_mvpa));
+		int walk_my_social_status1 <- int(children where(each.my_social_status=1) mean_of (each.avg_walk));
+		int walk_my_social_status2 <- int(children where(each.my_social_status=2) mean_of (each.avg_walk));
+		int walk_my_social_status3 <- int(children where(each.my_social_status=3) mean_of (each.avg_walk));
+		int walk_my_social_status4 <- int(children where(each.my_social_status=4) mean_of (each.avg_walk));
+		
+		float R_mvpa_my_social_status <- (children collect(each.avg_mvpa)) correlation (children collect(each.my_social_status)) with_precision 2 ;
+		float R_mvpa_sport <- (children collect(each.avg_mvpa)) correlation (children collect(each.nb_sport)) with_precision 2;
+		float R_mvpa_crime <- (children collect(each.avg_mvpa)) correlation (children collect(each.my_zone.norm_crime)) with_precision 2 ;
+		float R_mvpa_walk  <- (children collect(each.avg_mvpa)) correlation (children collect(each.avg_walk)) with_precision 2 ;
+		float R_mvpa_fit   <- (children collect(each.avg_mvpa)) correlation (children collect(each.my_activeness)) with_precision 2 ;
+		float R_mvpa_outplay <- (children collect(each.avg_mvpa)) correlation (children collect(each.outplay)) with_precision 2 ;
+		float R_mvpa_dmin_outplay <- (children collect(each.avg_mvpa))  correlation (children collect(each.daily_od)) with_precision 2 ;
+		float R_simd <- (children collect(each.avg_mvpa))  correlation (children collect(each.my_simd)) with_precision 2 ;
+		float R_car  <- (children collect(each.avg_mvpa))  correlation (children collect(each.num_car)) with_precision 2 ;
+		float R_friends <- (children collect(each.avg_mvpa))  correlation (children collect(each.num_friends)) with_precision 2 ;
+		float avg_mvpa <- children mean_of (each.avg_mvpa);
+		float avg_mvpa_boy <- children where(each.gender="boy") mean_of (each.avg_mvpa);
+		float avg_mvpa_girl <- children where(each.gender="girl") mean_of (each.avg_mvpa);
+		int mvpa_home <- int(children mean_of(each.mvpa_home)) ; //home
+		int mvpa_sc<-int(children mean_of(each.mvpa_sc)) ; //school
+		int mvpa_road<- int(children mean_of(each.mvpa_road)); //road
+		float mvpa_play_field<-children mean_of(each.mvpa_play_field) ; //playing fields
+		int mvpa_home_girlsarden<-int(children mean_of(each.mvpa_home_girlsarden)) ; //home Garden
+		float mvpa_park<-children mean_of(each.mvpa_park) ;//Park
+		float mvpa_PG<-children mean_of(each.mvpa_PG) ;//Public garden
+		float mvpa_amenity<-children mean_of(each.mvpa_amenity) ;//Amenity space
+		float mvpa_shops<-children mean_of(each.mvpa_shops) ;//shops
+		float mvpa_friends_home<-children mean_of(each.mvpa_friends_home); //friends home
+		int mvpa_fsa<-int(children mean_of(each.mvpa_fsa)) ;//FSA
+		int mvpa_total_outdoor<-int(children mean_of(each.daily_od_mvpa)) ;//total outdoor
+		int fsa_time<-int(children mean_of(each.lu_list[26]/days));//FSA
+		int OD_time<-int(children mean_of(each.daily_od)) ;////total outdoor
+		int SD_mvpa<-int((children variance_of (each.avg_mvpa))^0.5);
+		float per_daily_sixty<-float(length (children where(each.per_days_sixt>=0.9)));
+		
+		
+		string file_name<-"../includes/results/"+save_file;
+		save zone type: "csv" to: file_name+"/zone/Sc_int"+SC_inter+travel_mode+"/"+"Neigh_play"+n_p+"/zone"+"SC"+SC_inter+"np"+n_p+"imp_k"+imp_kids+self+ ".csv" ; 
+		save children type: "csv" to: file_name+"/children/Sc_int"+SC_inter+"_"+travel_mode+"/"+"Neigh_play"+n_p+"/children"+"SC"+SC_inter+"np"+n_p+"imp_k"+imp_kids+self+ ".csv" ; 
+		list tmp<-["s_name",travel_mode,imp_friends_influence,SC_inter,n_p,f_m,imp_kids,avg_mvpa,SD_mvpa,per_avg_under_sixty,per_daily_sixty,avg_mvpa_boy,avg_mvpa_girl, zero_to_30,thirty_to_40,forty_to_50,fifty_to_60,sixty_to_70,seventy_to_80,Eighty_to_90,ninty_over,
+				mvpa_my_social_status1,mvpa_my_social_status2,mvpa_my_social_status3,mvpa_my_social_status4,walk_my_social_status1,walk_my_social_status2,walk_my_social_status3,walk_my_social_status4,
+				R_mvpa_my_social_status,R_mvpa_sport,R_mvpa_crime,R_mvpa_walk,R_mvpa_fit,R_mvpa_outplay, R_mvpa_dmin_outplay,R_simd,R_car,R_friends,
+				mvpa_home,mvpa_sc,mvpa_road,mvpa_play_field,mvpa_park,mvpa_PG,mvpa_amenity,mvpa_shops,mvpa_friends_home,mvpa_fsa,mvpa_total_outdoor,mvpa_home_girlsarden,
+				fsa_time,OD_time];
+		save tmp to:file_name+"/Sim_stat/sim_stat.csv" type: "csv" rewrite:false header:true;
+		
+	}
