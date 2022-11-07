@@ -93,7 +93,7 @@ global {
 	float imp_friends_influence <- 0.3; //impact of friends on my_activeness
 	string travel_mode <- "usual" among: ["usual", "active_school", "walk_all"];
 	graph child_graph <- ([]);
-	string optimizer_type <- "AStar" among: ["NBAStar", "NBAStarApprox", "Dijkstra", "AStar", "BellmannFord", "FloydWarshall"];
+	string optimizer_type <- #AStar among: [#NBAStar, #NBAStarApprox, #Dijkstra, #AStar, #BellmannFord, #FloydWarshall];
 	/* types of optimizer (algorithms) can be used for the shortest path computation:
 	 *    - Dijkstra: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 	 * 	  - BellmannFord: https://en.wikipedia.org/wiki/Bellman-Ford_algorithm
@@ -129,7 +129,7 @@ global {
 		create private_garden from: private_garden_file with:
 		[area::int(read("area")), code::int(read("lu_code")), lu_name::string(read("Land_use")), perimeter::int(read("perimeter")), poly_id::int(read("Poly_ID"))];
 		create schools from: school_shape_file with: [id_catch::int(read("ID_catch"))];
-		create road from: road_shape_file;
+		
 		create zone from: zone_shape_file with:
 		[dataZone::string(read("DataZone")), nb_children::int(1.5 * int(read("8_9"))), pop::int(read("All_age")), nm_hh::int(read("House_nm")), crimeRate::int(read("CrimeRate")), over16::int(read("over16")), prob_social::[float(read("de25_44")), float(read("c2_25_44")), float(read("c1_25_44")), float(read("ab25_44"))], simd::int(read("Quintile")), norm_crime::float(read("norm_crime")), // unit of norm_crime , 1 unit=1 SD
 		AB_car_prob::[float(read("AB_NO_CAR")), float(read("AB_1CAR")), float(read("AB_2CAR"))], //Least deprived
@@ -152,11 +152,9 @@ global {
 			if neigh_codes contains code {
 				add self to: neigh_act_poly;
 			}
-
 			if after_school_codes contains code {
 				add self to: afterSchool_act_poly;
 			}
-
 		}
 
 		ask neigh_act_poly where ([2, 3] contains each.code and each.area < 1000) { //remove residential amenity  with area<1000
@@ -168,22 +166,24 @@ global {
 		}
 
 		create food_drink from: food_drink_shapefile with: [density::int(read("density")), poly_id::int(read("Poly_ID"))]; // number of shops in buffer 100 around the shop
+		
+		create road from: road_shape_file;
 		road_network <- as_edge_graph(list(road));
-		road_network <- road_network with_optimizer_type optimizer_type; //allows to choose the type of algorithm to use compute the shortest paths
-		//road_network <- road_network with_shortestpath_algorithm TransitNodeRouting;
+		road_network <- road_network with_shortest_path_algorithm optimizer_type; //allows to choose the type of algorithm to use compute the shortest paths
+		
 		create building from: buildings_shapefile with:
 		[type:: string(read("type")), zone::string(read("zone")), area::int(read("area")), x_cor::int(read("X_cor")), y_cor::int(read("Y_cor")), height::int(read("Height")), id_catch::int(read("Id_catch")), poly_id::int(read("Poly_ID")), walk_quant::int(read("walk_quant"))];
 		residential <- building where (each.type = 'Home');
 	}
 
 	action create_children {
-		int counting <- 0;
+		int counter <- 0;
 		ask zone {
-			list<building> zone_homes <- residential where (each.zone = self.dataZone);
+			list<building> zone_homes <- residential where (each.zone = self.dataZone); 
 			create children number: nb_children {
-				counting <- counting + 1;
-				if counting / 1000 = int(counting / 1000) {
-					write counting;
+				counter <- counter + 1; 
+				if counter / 1000 = int(counter / 1000) {
+					write counter;
 				}
 
 				my_zone <- myself;
@@ -199,11 +199,9 @@ global {
 				if my_social_status = 2 {
 					num_car <- rnd_choice(my_zone.C2_car_prob);
 				}
-
 				if my_social_status = 3 {
 					num_car <- rnd_choice(my_zone.C1_car_prob);
 				}
-
 				if my_social_status = 4 {
 					num_car <- rnd_choice(my_zone.AB_car_prob);
 				}
@@ -213,43 +211,40 @@ global {
 				my_simd_imp <- my_simd = 5 ? 1.0 : (my_simd = 4 ? 0.9 : (my_simd = 3 ? 0.8 : (my_simd = 2 ? 0.7 : 0.6)));
 				// impact of crime of outplay no impact if crime<=0 
 				// low impact-80% 0-0.7, medium 60% [0.7-1.3] high 40% >=1.3
-				my_neigh_prob <- min(1, n_p * outplay * my_simd_imp);
+				my_neigh_prob <- min(1, n_p * outplay * my_simd_imp); 
 			}
-
 		}
-
 	}
 
 	action assign_schools {
 		ask children parallel: true {
-			list<schools> my_school_candidates <- schools where (each.id_catch = self.id_catch) sort_by (each distance_to self);
+			list<schools> my_school_candidates <- schools where (each.id_catch = self.id_catch) sort_by (each distance_to self); 
 			my_school <- length(my_school_candidates) > 2 ? my_school_candidates[rnd(0, 2)] : one_of(my_school_candidates);
 			if my_school = nil {
 				my_school_candidates <- schools sort_by (each distance_to self);
 				my_school <- my_school_candidates[0];
 			}
-
 		}
 
 		ask schools parallel: true {
-			nb_pupils <- length(children where (each.my_school = self));
+			nb_pupils <- length(children where (each.my_school = self)); 
 		}
 
 		ask children where (each.my_school.nb_pupils < 25) parallel: true {
 			if num_car = 0 {
-				list<schools> my_school_candidates <- schools where (each.nb_pupils >= 25) sort_by (each distance_to self);
+				list<schools> my_school_candidates <- schools where (each.nb_pupils >= 25) sort_by (each distance_to self);  
 				my_school <- my_school_candidates[0];
 			}
 
 			if num_car > 0 {
-				list<schools> my_school_candidates <- schools where (each.nb_pupils >= 25) sort_by (each distance_to self);
+				list<schools> my_school_candidates <- schools where (each.nb_pupils >= 25) sort_by (each distance_to self); 
 				my_school <- my_school_candidates[rnd(0, 2)];
 			}
 
 		}
 
 		ask schools parallel: true {
-			nb_pupils <- length(children where (each.my_school = self));
+			nb_pupils <- length(children where (each.my_school = self)); 
 			avg_my_social_status <- (children where (each.my_school = self) mean_of (each.my_social_status)) with_precision 2;
 		}
 
@@ -262,11 +257,11 @@ global {
 				do die;
 			}
 
-			dis_school <- int(school_route.edges sum_of (each.perimeter)); //distance to school based on roads
-			if dis_school <= 300 or num_car < 1 {
+			distance_to_school <- int(school_route.edges sum_of (each.perimeter)); //distance to school based on roads
+			if distance_to_school <= 300 or num_car < 1 {
 				school_walk_prob <- 1.0;
 			} else {
-				float coef_dis <- -1.6 * ln(dis_school / 250) + 0.056; //-1.1*ln(dis/250)+0.056
+				float coef_dis <- -1.6 * ln(distance_to_school / 250) + 0.056; //-1.1*ln(dis/250)+0.056
 				float coef_walkb <- my_home.walk_quant = 1 ? 0 : -0.035 * (my_home.walk_quant - 1) ^ 2 + 0.0678 * (my_home.walk_quant - 1) - 0.8382; // -0.0292*(walk-1)^2+0.0678*(walk-1)-0.838
 				float winter_coef <- -0.3;
 				float logit_0 <- -5.807733 - (-1.427 + coef_walkb + coef_dis + winter_coef); //cut1-(-1.427+coef_walk+coef_dis)
@@ -283,14 +278,14 @@ global {
 				school_walk_prob <- ([0, rnd(0.2, 0.4), rnd(0.4, 0.8), rnd(0.8, 1.0)][cat]);
 			}
 
-			if dis_school > 2500 and num_car > 0 {
+			if distance_to_school > 2500 and num_car > 0 {
 				school_walk_prob <- 0.0;
 			}
 
 		}
 
 		ask zone parallel: true {
-			avg_dis_sh <- int(children where (each.my_zone = self) mean_of (each.dis_school));
+			avg_dis_sh <- int(children where (each.my_zone = self) mean_of (each.distance_to_school));
 		}
 
 	}
@@ -344,7 +339,7 @@ global {
 				if route = nil or route1 = nil {
 					remove self from: myself.after_sc_poly;
 				} else {
-					added_dis <- int(route.edges sum_of (each.perimeter) + route1.edges sum_of (each.perimeter) - myself.dis_school); //in this case dis_child is the added distance
+					added_dis <- int(route.edges sum_of (each.perimeter) + route1.edges sum_of (each.perimeter) - myself.distance_to_school); //in this case dis_child is the added distance
 					if added_dis >= 500 {
 						remove self from: myself.after_sc_poly;
 					}
@@ -384,19 +379,15 @@ global {
 				if my_social_status = 1 {
 					nb_sport <- rnd_choice([0.5, 0.2, 0.15, 0.1, 0.03, 0.02]);
 				}
-
 				if my_social_status = 2 {
 					nb_sport <- rnd_choice([0.4, 0.25, 0.2, 0.1, 0.03, 0.02]);
 				}
-
 				if my_social_status = 3 {
 					nb_sport <- rnd_choice([0.3, 0.18, 0.3, 0.075, 0.075, 0.07]);
 				}
-
 				if my_social_status = 4 {
 					nb_sport <- rnd_choice([0.15, 0.2, 0.35, 0.07, 0.07, 0.14]);
 				}
-
 			}
 
 			if nb_sport > 0 {
@@ -668,20 +659,20 @@ species zone {
 
 	action zone_stat {
 		list<children> my_children <- children where (each.my_zone = self);
-		avg_FSA <- my_children mean_of (each.nb_sport);
-		avg_walk <- my_children mean_of (each.avg_walk);
-		daily_OD <- my_children mean_of (each.daily_od);
+		avg_FSA   <- my_children mean_of (each.nb_sport);
+		avg_walk  <- my_children mean_of (each.avg_walk);
+		daily_OD  <- my_children mean_of (each.daily_od);
 		mvpa_home <- my_children mean_of (each.mvpa_home); //home
-		mvpa_sc <- my_children mean_of (each.mvpa_sc); //school
+		mvpa_sc   <- my_children mean_of (each.mvpa_sc); //school
 		mvpa_road <- my_children mean_of (each.mvpa_road); //road
-		mvpa_play_field <- my_children mean_of (each.mvpa_play_field); //playing fields
+		mvpa_play_field      <- my_children mean_of (each.mvpa_play_field); //playing fields
 		mvpa_home_girlsarden <- my_children mean_of (each.mvpa_home_girlsarden); //home Garden
 		mvpa_park <- my_children mean_of (each.mvpa_park); //Park
-		mvpa_PG <- my_children mean_of (each.mvpa_PG); //Public garden
+		mvpa_PG   <- my_children mean_of (each.mvpa_PG); //Public garden
 		mvpa_amenity <- my_children mean_of (each.mvpa_amenity); //Amenity space
 		mvpa_shops <- my_children mean_of (each.mvpa_shops); //shops
 		mvpa_friends_home <- my_children mean_of (each.mvpa_friends_home); //friends home
-		mvpa_fsa <- my_children mean_of (each.mvpa_fsa); //FSA
+		mvpa_fsa   <- my_children mean_of (each.mvpa_fsa); //FSA
 		mvpa_total_outdoor <- my_children mean_of (each.daily_od_mvpa); //total outdoor	
 	}
 
@@ -776,7 +767,7 @@ species children skills: [moving] {
 	int num_car;
 	int id_catch;
 	float my_neigh_prob;
-	int dis_school;
+	int distance_to_school;
 	int x_cor;
 	int y_cor;
 	float school_walk_prob; //probability to walk to school
@@ -848,19 +839,15 @@ species children skills: [moving] {
 		} else {
 			draw circle(8) border: #black color: #yellow;
 		}
-
 		if (school_route != nil and show_school_routes) {
 			draw (school_route.shape + 10) color: #magenta;
 		}
-
 		if my_activity = "Neigh play" and target = nil {
 			draw circle(8) border: #black color: #cyan;
 		}
-
 		if my_activity = "Planned sport" and target = nil {
 			draw circle(8) border: #black color: #blue;
 		}
-
 	}
 
 	action collect_mvpa {
@@ -884,7 +871,6 @@ species children skills: [moving] {
 			color <- #cyan;
 			write lu_name + " " + self distance_to myself;
 		}
-
 	}
 
 	action show_route_sc {
@@ -904,7 +890,7 @@ species children skills: [moving] {
 			float walk_prob;
 			if purpose = 'go_school' {
 				walk_prob <- travel_mode = "active_school" or travel_mode = "walk_all" ? 1.0 : school_walk_prob;
-				//walk_prob<-dis_school<=1500?1:school_walk_prob; //walking to school scenario and walk all
+				//walk_prob<-distance_to_school<=1500?1:school_walk_prob; //walking to school scenario and walk all
 			} else {
 				if travel_mode = "walk_all" {
 					walk_prob <- 1.0;
