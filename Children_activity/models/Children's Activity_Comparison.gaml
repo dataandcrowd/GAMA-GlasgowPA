@@ -114,8 +114,8 @@ global {
 		do assign_schools; //write "assign schools: "+ (date("now")-tmp_date);tmp_date<- date("now");
 		do cal_sch_walk_prob; //write "assign prob walk to school: "+ (date("now")-tmp_date);tmp_date<- date("now");		
 		do assign_garden_actlist; //write "assign garden+act list: "+ (date("now")-tmp_date);tmp_date<- date("now");
-		do assign_neigh_lu; //write "assign neigh lu: "+ (date("now")-tmp_date);tmp_date<- date("now");
-		do assign_routehome_lu; //write "assign route home lu: "+ (date("now")-tmp_date);tmp_date<- date("now");
+		do assign_neighbourhood; //write "assign neigh lu: "+ (date("now")-tmp_date);tmp_date<- date("now");
+		do assign_routehome; //write "assign route home lu: "+ (date("now")-tmp_date);tmp_date<- date("now");
 		do assign_shops; //write "assign shops: "+ (date("now")-tmp_date);
 		do assign_fsa; //write "assign fsa: "+ (date("now")-tmp_date);		
 		do assign_friends; //write "assign freinds: "+ (date("now")-tmp_date);				
@@ -293,12 +293,12 @@ global {
 	action assign_garden_actlist {
 		ask children parallel: true {
 			my_garden <- private_garden where (self distance_to each < 25) closest_to self;
-			act_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //list for activities from home 1-shoping, 2-neigh, 3-graden (incase the agent has one)
+			act_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //list for activities from home 1-shoping, 2-neigh, 3-garden (incase the agent has one)
 		}
 
 	}
 
-	action assign_neigh_lu {
+	action assign_neighbourhood {
 		ask children parallel: true {
 			list<landuse_polygon> extended_neigh_poly <- neigh_act_poly where (each distance_to self <= 800); //selecting only land use within 800 meter
 			extended_neigh_poly <- extended_neigh_poly sort_by (each distance_to self);
@@ -329,30 +329,27 @@ global {
 
 	}
 
-	action assign_routehome_lu {
+	action assign_routehome {
 		ask children parallel: true {
 			geometry polyline_home <- polyline(school_route.edges);
-			after_sc_poly <- afterSchool_act_poly where (distance_to(each, polyline_home) < 500); //land use within 500 meter around the route home
-			ask after_sc_poly {
+			afterschool_polygon <- afterSchool_act_poly where (distance_to(each, polyline_home) < 500); //land use within 500 meter around the route home
+			ask afterschool_polygon {
 				path route <- path_between(road_network, self, myself.my_school); //between school and the lu
 				path route1 <- path_between(road_network, self, myself.my_home); //between lu to home
 				if route = nil or route1 = nil {
-					remove self from: myself.after_sc_poly;
+					remove self from: myself.afterschool_polygon;
 				} else {
 					added_dis <- int(route.edges sum_of (each.perimeter) + route1.edges sum_of (each.perimeter) - myself.distance_to_school); //in this case dis_child is the added distance
 					if added_dis >= 500 {
-						remove self from: myself.after_sc_poly;
+						remove self from: myself.afterschool_polygon;
 					}
-
 				}
-
 			}
 
-			if after_sc_poly = nil {
+			if afterschool_polygon = nil {
 				do die;
 			}
-
-			after_sc_map <- after_sc_poly as_map (each::each.dis_child); //the keys is the polygon, the elment is the distance	
+			afterschool_map <- afterschool_polygon as_map (each::each.dis_child); //the keys is the polygon, the elment is the distance	
 		}
 
 	}
@@ -539,11 +536,6 @@ global {
 
 	}
 
-	action write_headings {
-		save
-		list(["S_name", "travel_mode", "imp_friends_influenceriends", "school_inter", "Neigh_play", "friend_meet", "imp_kids", "avg_mvpa", "SD_mvpa", "per_avg_under_sixty", "per_sixty_daily", "mvpa_boys", "mvpa_girls", "0_30", "30_40", "40_50", "50_60", "60_70", "70_80", "80_90", "more90", "mvpa1", "mvpa2", "mvpa3", "mvpa4", "walk1", "walk2", "walk3", "walk4", "R_my_social_status", "R_sport", "R_crime", "R_walk", "R_fit", "R_outplay", "R_min_outplay", "R_simd", "R_car", "R_friends", "PA_home", "PA_sc", "PA_road", "PA_Pfield", "PA_park", "PA_PG", "PA_amenity", "PA_SHOP", "PA_F_home", "PA_FSA", "PA_OD", "PA_H_garden", "fsa_time", "OD_time"])
-		to: "../includes/results/" + save_file + "/Sim_stat/sim_stat.csv" type: "csv" rewrite: false header: true;
-	}
 
 	action update_children {
 		ask children {
@@ -819,10 +811,10 @@ species children skills: [moving] {
 	float meet_hour;
 	bool with_friends <- false; //when the meeting take place=true 
 	path school_route;
-	list<landuse_polygon> after_sc_poly;
+	list<landuse_polygon> afterschool_polygon;
 	list<landuse_polygon> neigh_poly;
 	map<landuse_polygon, int> neigh_map;
-	map<landuse_polygon, int> after_sc_map;
+	map<landuse_polygon, int> afterschool_map;
 	list<food_drink> list_food_drink;
 	private_garden my_garden;
 	path my_path;
@@ -1027,19 +1019,19 @@ species children skills: [moving] {
 	}
 
 	action select_activity_polygon {
-		if length(after_sc_poly) > 0 {
-			float min_visits_poly <- after_sc_poly min_of (each.visits_per_day);
-			float range_visit_poly <- after_sc_poly max_of (each.visits_per_day) - min_visits;
-			ask after_sc_poly {
-				added_dis <- myself.after_sc_map[self];
+		if length(afterschool_polygon) > 0 {
+			float min_visits_poly <- afterschool_polygon min_of (each.visits_per_day);
+			float range_visit_poly <- afterschool_polygon max_of (each.visits_per_day) - min_visits;
+			ask afterschool_polygon {
+				added_dis <- myself.afterschool_map[self];
 				float norm_dis <- 0.5 ^ ((added_dis / 500)); //added_dis<300? 1:
 				float norm_visits <- range_visit_poly = 0 ? 0 : (visits_per_day - min_visits_poly) / range_visit_poly;
 				float area_inc <- area > 10000 ? 1 : 0.0; //(area>2500?0.8:0.5); 
 				rank <- 0.6 * norm_dis + 0.2 * norm_visits + 0.2 * area_inc; // calculate the attractivity of the polygon
 			}
 
-			after_sc_poly <- (reverse(after_sc_poly sort_by (each.rank)));
-			do select_by_prob(after_sc_poly);
+			afterschool_polygon <- (reverse(afterschool_polygon sort_by (each.rank)));
+			do select_by_prob(afterschool_polygon);
 		} else {
 			do transport_mode(true);
 			do go_home;
