@@ -23,7 +23,7 @@ global {
 	action create_layers {
 		
 		road_network <- as_edge_graph(list(road)); 
-		road_network <- road_network with_shortestpath_algorithm AStar;
+		road_network <- road_network with_shortest_path_algorithm #AStar;
 	}
 }
 
