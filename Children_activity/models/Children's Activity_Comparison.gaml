@@ -437,7 +437,7 @@ global {
 		ask children parallel: true {
 			my_best_friends <- list<children>(child_graph neighbors_of (self));
 			nb_friends <- length(my_best_friends);
-			activity_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //updating the list of activities from home shoppingping=1, neighbourhood=2,garden=3
+			activity_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //updating the list of activities from home shopping=1, neighbourhood=2,garden=3
 		}
 
 	}
@@ -454,7 +454,7 @@ global {
 
 	}
 
-	reflex time_counter {
+	reflex time_counter { 
 		t <- t + 1;
 		current_hour <- float((t) mod 1440) / 60;
 		if current_hour = 9.5 {
@@ -734,7 +734,7 @@ species building {
 
 }
 
-species children skills: [moving] {
+species children skills: [moving] { 
 //charctaristics
 	zone  my_zone;
 	string gender <- flip(0.5) ? "boy" : "girl";
@@ -831,7 +831,7 @@ species children skills: [moving] {
 		}
 	}
 
-	action collect_mvpa {
+	action collect_mvpa { 
 		mvpa_home <- int(list_lu_mvpa[1] / (days - 1)); //home
 		mvpa_school   <- int(list_lu_mvpa[20] / (days - 1)); //school
 		mvpa_road <- int(list_lu_mvpa[23] / (days - 1)); //walking
