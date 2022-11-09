@@ -292,16 +292,11 @@ global {
 	}
 
 	action assign_garden_actlist {
-		ask children parallel: true {
-			my_garden <- private_garden where (self distance_to each < 25) closest_to self;
-<<<<<<< HEAD
-			activity_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //list for activities from home 1-shopping, 2-neigh, 3-garden (in case the agent has one)
-=======
-			act_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; //list for activities from home 1-shoping, 2-neigh, 3-garden (incase the agent has one)
->>>>>>> a03ffda8ad6bcfd86283ec4820d6a977dfe83ef9
-		}
-
-	}
+ask children parallel: true {
+	my_garden <- private_garden where (self distance_to each < 25) closest_to self;
+	activity_list <- my_garden = nil ? [1, 2] : [1, 2, 3]; 
+    //list for activities from home 1-shopping, 2-neigh, 3-garden (incase the agent has one)
+}}
 
 	action assign_neighbourhood {
 		ask children parallel: true {
@@ -329,42 +324,28 @@ global {
 		}
 	}
 
+	
+	
 	action assign_routehome {
-		ask children parallel: true {
-			geometry polyline_home <- polyline(school_route.edges);
-<<<<<<< HEAD
-			after_sc_poly <- afterSchool_activity_polygon where (distance_to(each, polyline_home) < 500); //land use within 500 meter around the route home
-			ask after_sc_poly {
-=======
-			afterschool_polygon <- afterSchool_act_poly where (distance_to(each, polyline_home) < 500); //land use within 500 meter around the route home
-			ask afterschool_polygon {
->>>>>>> a03ffda8ad6bcfd86283ec4820d6a977dfe83ef9
-				path route <- path_between(road_network, self, myself.my_school); //between school and the lu
-				path route1 <- path_between(road_network, self, myself.my_home); //between lu to home
-				if route = nil or route1 = nil {
-					remove self from: myself.afterschool_polygon;
-				} else {
-					added_dis <- int(route.edges sum_of (each.perimeter) + route1.edges sum_of (each.perimeter) - myself.distance_to_school); 
-					//in this case dis_child is the added distance
-					if added_dis >= 500 {
-						remove self from: myself.afterschool_polygon;
-					}
+		ask children parallel:true{
+			geometry polyline_home<-polyline(school_route.edges);
+			afterschool_polygon<-afterSchool_activity_polygon where(distance_to(each,polyline_home) <500); //land use within 500 meter around the route home
+			ask afterschool_polygon{
+				path route   <- path_between(road_network, self,myself.my_school);//between school and the lu
+				path route1  <- path_between(road_network, self,myself.my_home);//between lu to home
+				if route=nil or route1=nil {
+					remove self from:myself.afterschool_polygon;
 				}
-			}
-<<<<<<< HEAD
-			if after_sc_poly = nil {
-				do die;}
-			after_sc_map <- after_sc_poly as_map (each::each.dis_child); 
-			// Each map value contains a key indicating the polygon index and the elment being the distance	
-=======
-
-			if afterschool_polygon = nil {
-				do die;
-			}
-			afterschool_map <- afterschool_polygon as_map (each::each.dis_child); //the keys is the polygon, the elment is the distance	
->>>>>>> a03ffda8ad6bcfd86283ec4820d6a977dfe83ef9
+				else{
+					added_dis <- int(route.edges sum_of (each.perimeter)+ route1.edges sum_of (each.perimeter)-myself.distance_to_school);	//in this case dis_child is the added distance
+					if added_dis>=500 {remove self from:myself.afterschool_polygon;}	
+					}	
+				}	
+			if afterschool_polygon=nil{do die;}
+			afterschool_map <-afterschool_polygon as_map(each::each.dis_child);//the keys is the polygon, the elment is the distance	
 		}
 	}
+	
 
 	action assign_shops {
 		ask children parallel: true {
