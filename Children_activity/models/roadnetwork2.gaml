@@ -34,15 +34,9 @@ global {
 	int week_day <- 1;
 	graph road_network;
 	int nb_agents <- length(children);
-	bool activity_hours <- false; //act hours are:15:00-19:00
 	list<building> residential;
-	
-	
-	
 	bool show_school_routes <- false;
 	bool show_zones <- false;
-	float imp_kids <- 0.1;
-	float imp_friends_influence <- 0.3; //impact of friends on my_activeness
 	string travel_mode <- "usual" among: ["usual", "active_school", "walk_all"];
 	graph child_graph <- ([]);
 	string optimizer_type <- #AStar among: [#NBAStar, #NBAStarApprox, #Dijkstra, #AStar, #BellmannFord, #FloydWarshall];
@@ -50,8 +44,6 @@ global {
 	
 	init{
 		write "Start initialise:" + date("now");
-		
-		
 		do create_layers;
 		do create_children;
 		do assign_schools;
@@ -146,13 +138,12 @@ global {
 				my_school <- my_school_candidates[rnd(0, 2)];
 			}
 		}
-
 		ask schools parallel: true {
 			nb_pupils <- length(children where (each.my_school = self)); 
 		} 
 	}
-
-action cal_sch_walk_prob {
+	
+	action cal_sch_walk_prob {
 		ask children parallel: true {
 			school_route <- path_between(road_network, my_home, my_school);
 			if school_route = nil {
@@ -189,7 +180,6 @@ action cal_sch_walk_prob {
 		ask zone parallel: true {
 			avg_dis_sh <- int(children where (each.my_zone = self) mean_of (each.distance_to_school));
 		}
-
 	}
 
 
@@ -209,7 +199,7 @@ reflex time_counter {
 			}
 	}
 
-reflex end_simulation when: days = 6 {
+reflex end_simulation when: days = 10 {
 		do pause;
 	}
 
@@ -231,14 +221,10 @@ species children skills: [moving] {
 	string gender <- flip(0.5) ? "boy" : "girl";
 	int   my_social_status; //4 social levels 1-richest 4-poorest based on AB, C1,C2,DE
 	float my_activeness <- max(0.3, gauss({1, 0.3})); //distribution of tendency to be active (A)
-	//float playing_outdoors <- max(0, gauss({1, 0.3})); //distribution of preference to be outdoor (O)
-	float my_crime;
 	int   my_simd;
 	float my_simd_imp;
-	int   nb_friends;
 	int   num_car;
 	int   id_catch;
-	float my_neigh_prob;
 	int   distance_to_school;
 	int   x_cor;
 	int   y_cor;
@@ -251,12 +237,12 @@ species children skills: [moving] {
 	//activities
 	int dis_target;
 	list<int> lu_list <- list_with(27, 0); //list the counts the time spent on each landuse. Land use is organised by code in the list
-	string my_activity;
+	string my_activity; // home, school
 	int my_lu_code <- 1;
 	path school_route;
 	path my_path;
 	string purpose; //to determine what reflex the agent will implement
-	int duration;
+	int time_stamp;
 	int mode_of_transport <- 0;
 	bool return_home <- false;
 	bool goto_school <- false;
@@ -329,7 +315,7 @@ species children skills: [moving] {
 
 	}
 
-	reflex school_time when: purpose = 'stay_school' {
+	reflex home_time when: purpose = 'stay_school' {
 	//end of school
 		if current_hour >= 15.0 {
 				do set_mode_of_transport(true);
@@ -397,10 +383,10 @@ species building {
 experiment pathfinding type: gui  {
 	output {
 	display simulation type: opengl {		
-			species building aspect: base refresh: false;
+			species building aspect: base refresh: true;
 			species zone aspect: default;
-			species road aspect: default refresh: false;	
-			species schools aspect: base refresh: false;
+			species road aspect: default refresh: true;	
+			species schools aspect: base refresh: true;
 			species children aspect: default refresh: true;		
 	}
 }
