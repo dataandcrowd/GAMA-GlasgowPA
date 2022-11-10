@@ -12,11 +12,48 @@ model roadnetwork
 
 global {
 	string scale <- "53zones" among: ["53zones", "120zones"];
+	file private_garden_file <- file('../includes/Layers_glasgow/' + scale + '/Private_Garden_' + scale + '.shp');
 	file road_shape_file <- file('../includes/Layers_glasgow/' + scale + '/Road_' + scale + '.shp');
+	file landuse_shape_file <- file('../includes/Layers_glasgow/' + scale + '/Landuse_' + scale + '.shp');
+	file my_landuse_file <- csv_file('../includes/Layers_glasgow/land_use_table.csv', ',', true);
+	file food_drink_shapefile <- file('../includes/Layers_glasgow/' + scale + '/FoodDrink_' + scale + '.shp');
+	file buildings_shapefile <- file('../includes/Layers_glasgow/' + scale + '/Bld_' + scale + '.shp');
+	file zone_shape_file <- file('../includes/Layers_glasgow/' + scale + '//Zones_' + scale + '.shp');
+	file school_shape_file <- file('../includes/Layers_glasgow/' + scale + '/Prim_Edu_' + scale + '.shp');
+	file leisure_shape_file <- file('../includes/Layers_glasgow/' + scale + '/OS_Open_Leisure_Centre.shp');
+	
+	
+	/* Setting up the Ecosystem */
 	geometry shape <- envelope(road_shape_file);
+	list<rgb> red_pallete <- brewer_colors("Reds");
+	matrix data <- matrix(my_landuse_file);
+	float step <- #minute;
+	int t <- 60 * 7 + 48; //minutes counter
+	float current_hour <- 7.8;
+	int days <- 1;
+	int week_day <- 1;
 	graph road_network;
+	int nb_agents <- length(children);
+	bool activity_hours <- false; //act hours are:15:00-19:00
+	int save_on_day <- 100;
+	string save_file <- 'scenario';
+	float max_visits <- 0.0;
+	float min_visits <- 0.0;
+	float max_less_min <- 1.0;
+	
+	bool show_school_routes <- false;
+	bool show_zones <- false;
+	float imp_kids <- 0.1;
+	float imp_friends_influence <- 0.3; //impact of friends on my_activeness
+	string travel_mode <- "usual" among: ["usual", "active_school", "walk_all"];
+	graph child_graph <- ([]);
+	string optimizer_type <- #AStar among: [#NBAStar, #NBAStarApprox, #Dijkstra, #AStar, #BellmannFord, #FloydWarshall];
+	
 	
 	init{
+		write "Start initialise:" + date("now");
+		
+		
 		create road from: road_shape_file;
 	}
 	
@@ -172,9 +209,44 @@ species children skills: [moving] {
 			draw circle(8) border: #black color: #blue;
 		}
 	}
-	
-	
 }
+
+
+species private_garden {
+	int poly_id;
+	rgb color <- rgb(204, 255, 153);
+	int area;
+	int perimeter;
+	float mvpa_prob;
+	string lu_name;
+	int code;
+
+	aspect base {
+		draw shape color: color;
+	}
+
+}
+
+species schools {
+	int id_catch;
+	int pe_day <- rnd(4) + 1;
+	rgb color <- rgb(255, 0, 127);
+	float per_meeting;
+	list<float> list_meeting;
+	float avg_list_meeting;
+	int nb_pupils;
+//	float avg_my_social_status;
+//	float avg_mvpa;
+
+	aspect base {
+		draw shape border: #black color: color;
+//		draw string(avg_my_social_status) at: point(self) font: font('Default', 12, #bold) color: #black;
+	}
+
+
+
+}
+
 
 experiment pathfinding type: gui {
 	output {
