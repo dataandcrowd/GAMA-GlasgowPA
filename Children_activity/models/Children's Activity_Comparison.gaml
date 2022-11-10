@@ -673,7 +673,7 @@ species sport_activity {
 	children my_child;
 }
 
-species social_act {
+species social_activity {
 	list<int> day;
 	int time;
 	landuse_polygon activity_polygon;
