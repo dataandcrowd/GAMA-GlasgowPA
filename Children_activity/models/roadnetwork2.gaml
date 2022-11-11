@@ -35,12 +35,9 @@ global {
 	graph road_network;
 	int nb_agents <- length(children);
 	list<building> residential;
-	bool show_school_routes <- false;
-	bool show_zones <- false;
 	string travel_mode <- "usual" among: ["usual", "active_school", "walk_all"];
-	graph child_graph <- ([]);
-	string optimizer_type <- #AStar among: [#NBAStar, #NBAStarApprox, #Dijkstra, #AStar, #BellmannFord, #FloydWarshall];
-	
+	string optimizer_type <- #FloydWarshall among: [#NBAStar, #NBAStarApprox, #Dijkstra, #AStar, #BellmannFord, #FloydWarshall];
+	float avg_time_stamp;
 	
 	init{
 		write "Start initialise:" + date("now");
@@ -48,13 +45,9 @@ global {
 		do create_children;
 		do assign_schools;
 		do cal_sch_walk_prob;
-		
-		
 	}
-
-
-
-
+	
+	
 	action create_layers {
 		create schools from: school_shape_file with: [id_catch::int(read("ID_catch"))];
 		
@@ -199,6 +192,16 @@ reflex time_counter {
 			}
 	}
 
+
+
+reflex report_time when: days = 1 {
+			avg_time_stamp <- children mean_of (each.time_stamp);
+			write avg_time_stamp;
+			
+		
+	}
+
+
 reflex end_simulation when: days = 10 {
 		do pause;
 	}
@@ -242,6 +245,8 @@ species children skills: [moving] {
 	path school_route;
 	path my_path;
 	string purpose; //to determine what reflex the agent will implement
+	int time_stamp_start;
+	int time_stamp_end;
 	int time_stamp;
 	int mode_of_transport <- 0;
 	bool return_home <- false;
@@ -261,6 +266,7 @@ species children skills: [moving] {
 	reflex go_to_school when: current_hour = 8.0 {
 		purpose <- 'go_school';
 		target <- my_school.location;
+		time_stamp_start <- cycle;
 		do set_mode_of_transport(false);
 	}
 
@@ -278,7 +284,6 @@ species children skills: [moving] {
 					walk_prob <- num_car = 0 or dis_target < 300 ? 1 : 0.3 * 0.9 ^ (my_home.walk_quant - 1) + 0.2 * 0.8 ^ num_car + 0.5 * 0.7 ^ ((dis_target / 300) - 1);
 				}
 			}
-
 			mode_of_transport <- flip(walk_prob) ? 1 : 2; //prob for: walk=1, car=2	
 		}
 
@@ -304,6 +309,8 @@ species children skills: [moving] {
 			target <- nil;
 			purpose <- 'stay_school';
 			location <- any_location_in(my_school);
+			time_stamp_end <- cycle;
+			time_stamp <- time_stamp_end - time_stamp_start;
 		}
 
 
